@@ -3,7 +3,7 @@
 #
 # 仓库 Secret：CLOUDFLARE_API_TOKEN
 # Account ID 是公开标识符，直接写在 env 中（也兼容可选的 Secret）。
-# 可选 Variable：NEXT_PUBLIC_SITE_URL（部署后拿到的 workers.dev 地址）
+# 可选 Variable：NEXT_PUBLIC_SITE_URL（面向用户的正式地址，默认取国内可直连的 pages.dev 入口）
 
 name: Deploy to Cloudflare Workers
 
@@ -29,7 +29,7 @@ jobs:
       - name: Build Worker bundle
         run: npm run cf:build
         env:
-          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || 'https://ziwei-doushu.515554707.workers.dev' }}
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || 'https://ziwei-doushu-8uh.pages.dev' }}
 
       - name: Verify Cloudflare credentials
         env:

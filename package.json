@@ -12,7 +12,8 @@
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "cf:db:init": "wrangler d1 execute ziwei-doushu --remote --file=db/schema.sql"
+    "cf:db:init": "wrangler d1 execute ziwei-doushu --remote --file=db/schema.sql",
+    "pages:deploy": "wrangler pages deploy cloudflare-proxy/dist --project-name=ziwei-doushu --branch=main --commit-dirty=true"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",
