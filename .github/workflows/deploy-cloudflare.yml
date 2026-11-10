@@ -7,7 +7,9 @@
 #   npm run cf:db:init                                    （已完成，远程 3 张表）
 #   Worker 首次部署后再执行：npx wrangler secret put DEEPSEEK_API_KEY
 #
-# 仓库需要两个 Secrets：CLOUDFLARE_API_TOKEN、CLOUDFLARE_ACCOUNT_ID
+# 仓库只需一个 Secret：CLOUDFLARE_API_TOKEN
+# （Cloudflare → My Profile → API Tokens，用「Edit Cloudflare Workers」模板并加 D1 编辑权限）
+# Account ID 是公开标识符，直接写在下方 env 中。
 # 可选 Variable：NEXT_PUBLIC_SITE_URL（部署后拿到的 workers.dev 地址）
 
 name: Deploy to Cloudflare Workers
@@ -36,14 +38,23 @@ jobs:
         env:
           NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
 
+      - name: Verify Cloudflare credentials
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CF_TOKEN" ]; then
+            echo "::error::缺少 CLOUDFLARE_API_TOKEN：请在仓库 Settings → Secrets and variables → Actions 添加后重新运行本工作流"
+            exit 1
+          fi
+
       - name: Create / update D1 tables
         run: npx wrangler d1 execute ziwei-doushu --remote --file=db/schema.sql
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: 568ca81e3fcc42ac6171288b96ce0868
 
       - name: Deploy
         run: npx opennextjs-cloudflare deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: 568ca81e3fcc42ac6171288b96ce0868
