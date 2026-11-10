@@ -39,7 +39,8 @@ jobs:
       - name: Package bundle
         run: |
           cd .open-next
-          zip -qr ../worker-bundle.zip . -x '.build/*'
+          # worker.js 会 import .build/ 下的 durable objects 与编译配置，必须一起打包
+          zip -qr ../worker-bundle.zip .
 
       - name: Publish bundle as release asset
         env:
