@@ -1,24 +1,19 @@
-# 在 Linux runner 上构建 OpenNext Worker，并把产物发布成 Release 资源。
+# 在 Linux runner 上构建 OpenNext Worker 并直接部署到 Cloudflare Workers。
+# 本机 Windows 的 workerd/OpenNext 构建链路不可用，因此构建与发布都放在 CI。
 #
-# 为什么不在 CI 里直接部署：CI 部署需要 Cloudflare API Token，而原生的
-# OAuth 登录态只存在于开发机。这里让 CI 只负责构建，产物由本机已登录的
-# wrangler 直接部署，凭据不进入 CI、不需要创建任何 API Token。
-#
-# 产物目录 .open-next 整体打包（排除临时 .build），解压后与 wrangler.jsonc
-# 中的 main / assets.directory 一一对应。
+# 仓库 Secret：CLOUDFLARE_API_TOKEN
+# Account ID 是公开标识符，直接写在 env 中（也兼容可选的 Secret）。
+# 可选 Variable：NEXT_PUBLIC_SITE_URL（部署后拿到的 workers.dev 地址）
 
-name: Build Worker Bundle
+name: Deploy to Cloudflare Workers
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,18 +31,23 @@ jobs:
         env:
           NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
 
-      - name: Package bundle
-        run: |
-          cd .open-next
-          # worker.js 会 import .build/ 下的 durable objects 与编译配置，必须一起打包
-          zip -qr ../worker-bundle.zip .
-
-      - name: Publish bundle as release asset
+      - name: Verify Cloudflare credentials
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          TAG="build-${GITHUB_SHA::8}"
-          gh release delete "$TAG" --yes >/dev/null 2>&1 || true
-          gh release create "$TAG" worker-bundle.zip \
-            --title "Worker bundle $TAG" \
-            --notes "Auto-built OpenNext worker bundle for local deployment"
+          if [ -z "$CF_TOKEN" ]; then
+            echo "::error::缺少 CLOUDFLARE_API_TOKEN：请在仓库 Settings → Secrets and variables → Actions 添加"
+            exit 1
+          fi
+
+      - name: Create / update D1 tables
+        run: npx wrangler d1 execute ziwei-doushu --remote --file=db/schema.sql
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || '568ca81e3fcc42ac6171288b96ce0868' }}
+
+      - name: Deploy
+        run: npx opennextjs-cloudflare deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || '568ca81e3fcc42ac6171288b96ce0868' }}
