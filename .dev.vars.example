@@ -1,0 +1,9 @@
+# 复制为 .dev.vars 后填入真实值；该文件只用于本地 Workers 预览，不要提交。
+# 生产环境请用 `npx wrangler secret put DEEPSEEK_API_KEY` 写入密钥。
+
+DEEPSEEK_API_KEY=
+MIMO_API_KEY=
+MIMO_BASE_URL=
+MIMO_MODEL=
+MIMO_REASONING_EFFORT=low
+NEXT_PUBLIC_SITE_URL=http://localhost:8788

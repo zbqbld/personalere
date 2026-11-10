@@ -1,0 +1,19 @@
+node_modules/
+.next/
+.next.bak.*/
+server.log
+.vercel/
+.env*
+!.env.example
+dist/
+*.tsbuildinfo
+.DS_Store
+node_modules
+
+# 账号、会话与归属档案数据（含密码派生值，禁止入库）
+data/
+
+# Cloudflare Workers / OpenNext 构建产物与本地密钥
+.open-next/
+.wrangler/
+.dev.vars
