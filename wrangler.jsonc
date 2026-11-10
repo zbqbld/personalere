@@ -9,7 +9,19 @@
     "binding": "ASSETS"
   },
   // D1 已创建并建表（accounts / sessions / profiles）。
-  // AI 密钥需在 Worker 首次部署后配置：npx wrangler secret put DEEPSEEK_API_KEY
+  "d1_databases": [
+    {
+      "binding": "ZIWEI_DB",
+      "database_name": "ziwei-doushu",
+      "database_id": "0996c53e-a5d0-4ecd-bbae-3968a0a67904"
+    }
+  ],
+  // 线上 AI 配置全部放在 Worker secret 里（密钥不进仓库、也不走 vars）：
+  //   npx wrangler secret put MIMO_API_KEY          # 智谱 key（id.secret 格式）
+  //   npx wrangler secret put MIMO_BASE_URL        # https://open.bigmodel.cn/api/paas/v4
+  //   npx wrangler secret put MIMO_MODEL           # glm-5.3-flash
+  //   npx wrangler secret put MIMO_REASONING_EFFORT # low | high | max
+  // 注意：同一个名字不能既是 secret 又是 vars 绑定，否则 deploy 会报绑定冲突。
   // Worker 创建之前执行 secret put 会报 "Worker not found"。
   "d1_databases": [
     {
