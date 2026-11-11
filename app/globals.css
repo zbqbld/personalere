@@ -566,13 +566,20 @@ body {
 }
 .zw-link:hover { color: var(--ac-dim); }
 
-/* 首帧遮罩 */
+/* 首帧遮罩。正常情况下 React 水合后立刻移除；这里加一条纯 CSS 兜底：
+   若客户端脚本因故未执行（例如 dev 模式 HMR 握手失败），遮罩也会在 8 秒后
+   自动淡出，避免用户永远停在「正在恢复上次的信息…」。 */
 .zw-boot {
   position: fixed; inset: 0; z-index: 60;
   display: grid; place-items: center;
   background: var(--bg-page);
   color: var(--tx-3);
   font-size: 13px;
+  animation: zw-boot-failsafe 8s forwards;
+}
+@keyframes zw-boot-failsafe {
+  0%, 87% { opacity: 1; visibility: visible; }
+  100% { opacity: 0; visibility: hidden; pointer-events: none; }
 }
 
 /* 表单视图 */

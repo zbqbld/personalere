@@ -2,7 +2,9 @@
 chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
-set "URL=http://127.0.0.1:3000/chart"
+REM Next 16 dev rejects HMR websocket upgrades from 127.0.0.1, which stalls
+REM hydration and leaves the boot overlay on screen. Always use localhost.
+set "URL=http://localhost:3000/chart"
 
 REM Dev mode needs no production build. First request triggers a compile that can
 REM take 1-2 minutes on a cold start, so poll until the page really answers
