@@ -17,7 +17,8 @@ import {
 } from '@/lib/ziwei/memory';
 import { saveUserProfiles } from '@/lib/ziwei/user-profiles';
 import AccountPanel from '@/components/AccountPanel';
-import { clearAccountProfiles, saveAccountProfiles } from '@/lib/account/client';
+import { applyAccountScope, clearAccountProfiles, saveAccountProfiles } from '@/lib/account/client';
+import { ACCOUNT_ENABLED } from '@/lib/account/feature';
 import type { ZiweiChart, Palace } from '@/lib/ziwei/types';
 
 /**
@@ -66,6 +67,9 @@ export default function ChartPage() {
 
   // ── 挂载时恢复：只用本地数据，不访问网络 ──────────────────
   useEffect(() => {
+    // 本地免注册模式：若之前登录过，先把残留的账号命名空间清掉，
+    // 否则会读到旧账号下的键，看起来像「还有账号」。
+    if (!ACCOUNT_ENABLED) applyAccountScope(null);
     const mem = loadLastBirth();
     setMemory(mem);
     setFormSeed(mem?.form);
@@ -317,7 +321,7 @@ export default function ChartPage() {
               </section>
             )}
 
-            <AccountPanel onAccountChange={setAccountOwnerId} />
+            {ACCOUNT_ENABLED && <AccountPanel onAccountChange={setAccountOwnerId} />}
 
             <BirthForm
               key={formKey}

@@ -21,7 +21,8 @@ import {
   type LastBirthMemory,
 } from '@/lib/ziwei/memory';
 import { listUserProfiles, type UserProfile } from '@/lib/ziwei/user-profiles';
-import { loadAccount, type AccountInfo } from '@/lib/account/client';
+import { applyAccountScope, loadAccount, type AccountInfo } from '@/lib/account/client';
+import { ACCOUNT_ENABLED } from '@/lib/account/feature';
 
 interface RecentChat {
   label: string;
@@ -85,17 +86,28 @@ export default function WorkbenchPage() {
   }, []);
 
   useEffect(() => {
-    // 先恢复账号命名空间，再读取该空间下的本机数据，避免读到别人的键
-    loadAccount().then(a => {
-      setAccount(a);
+    const readLocalData = () => {
       setProfiles(listUserProfiles());
       setChats(readRecentChats());
       setChatCount(countChats());
       setLastBirth(loadLastBirth());
       setReady(true);
+    };
+
+    if (!ACCOUNT_ENABLED) {
+      // 本地免注册模式：不请求 /api/account，也不保留旧的账号命名空间，
+      // 直接读取本机数据，打开页面就能进「开始起盘」。
+      applyAccountScope(null);
+      readLocalData();
+      return;
+    }
+
+    // 先恢复账号命名空间，再读取该空间下的本机数据，避免读到别人的键
+    loadAccount().then(a => {
+      setAccount(a);
+      readLocalData();
     }).catch(() => {
-      setProfiles(listUserProfiles());
-      setReady(true);
+      readLocalData();
     });
   }, []);
 
@@ -136,14 +148,18 @@ export default function WorkbenchPage() {
         <section className="wb-hero">
           <p className="wb-eyebrow">WORKBENCH{today ? ` · ${today}` : ''}</p>
           <h1>命盘工作台</h1>
-          <p className="wb-hero-sub">一屏掌握档案、解读与起盘入口。数据仅保存在本机与你的账号空间。</p>
+          <p className="wb-hero-sub">
+            {ACCOUNT_ENABLED
+              ? '一屏掌握档案、解读与起盘入口。数据仅保存在本机与你的账号空间。'
+              : '一屏掌握档案、解读与起盘入口。数据仅保存在本机，打开即可起盘。'}
+          </p>
         </section>
 
         <section className="wb-stats" aria-label="概览">
           <div className="wb-stat">
             <span className="wb-stat-label">命盘档案</span>
             <strong className="wb-stat-value">{ready ? profiles.length : '—'}</strong>
-            <span className="wb-stat-foot">本机 / 当前账号</span>
+            <span className="wb-stat-foot">{ACCOUNT_ENABLED ? '本机 / 当前账号' : '仅存本机'}</span>
           </div>
           <div className="wb-stat">
             <span className="wb-stat-label">解读会话</span>
@@ -157,11 +173,13 @@ export default function WorkbenchPage() {
             </strong>
             <span className="wb-stat-foot">{lastBirth ? describeBirthDraft(lastBirth.form) : '起一张命盘开始'}</span>
           </div>
-          <div className="wb-stat">
-            <span className="wb-stat-label">当前账号</span>
-            <strong className="wb-stat-value wb-stat-value-sm">{account ? account.nickname : '匿名模式'}</strong>
-            <span className="wb-stat-foot">{account ? '档案归属本人账号' : '数据仅存本机'}</span>
-          </div>
+          {ACCOUNT_ENABLED && (
+            <div className="wb-stat">
+              <span className="wb-stat-label">当前账号</span>
+              <strong className="wb-stat-value wb-stat-value-sm">{account ? account.nickname : '匿名模式'}</strong>
+              <span className="wb-stat-foot">{account ? '档案归属本人账号' : '数据仅存本机'}</span>
+            </div>
+          )}
         </section>
 
         <div className="wb-grid">
