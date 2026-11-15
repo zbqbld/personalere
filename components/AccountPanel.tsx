@@ -311,7 +311,7 @@ export default function AccountPanel({ onAccountChange, embedded = false }: Acco
       {billing && (
         <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: `1px solid ${border}` }}>
           <p style={{ color: inputClr, fontSize: '13px', margin: '0 0 6px' }}>
-            解读额度：今日免费剩 {billing.freeLeft}/{billing.freeLimit} 次 · 卡密剩 {billing.credits} 次
+            解读额度：免费剩 {billing.freeLeft}/{billing.freeLimit} 次 · 卡密剩 {billing.credits} 次
           </p>
           {!account && (
             <p style={{ color: hintClr, fontSize: '11px', margin: '0 0 8px' }}>

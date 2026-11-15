@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       data: {
         enabled: true,
         loggedIn: Boolean(identity.ownerId),
-        freeLimit: status?.freeLimit ?? config.freeDaily,
+        freeLimit: status?.freeLimit ?? config.freeTotal,
         freeLeft: status?.freeLeft ?? 0,
         credits: status?.credits ?? 0,
       },

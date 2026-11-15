@@ -1,9 +1,8 @@
 /**
- * 计费核心逻辑回归测试（卡密次数制）
+ * 计费核心逻辑回归测试（卡密次数制 + 累计免费额度）
  *
- * 覆盖：每日免费额度递增与上限、卡密兑换（单次有效 / 未知卡密 / 重复兑换）、
- * 额度用尽后扣卡密次数、拒绝路径（QUOTA_EXCEEDED）、匿名与登录主体隔离、
- * 跨自然日额度重置、钱包写入失败回滚占卡。
+ * 覆盖：累计免费额度（每主体共 N 次、跨天不重置）、卡密兑换（单次有效 / 未知卡密 / 重复兑换）、
+ * 额度用尽后扣卡密次数、拒绝路径（QUOTA_EXCEEDED）、匿名与登录主体隔离、钱包写入失败回滚占卡。
  */
 import assert from 'node:assert/strict';
 import { createBilling, type D1Statement } from '../../lib/billing/core';
@@ -84,8 +83,8 @@ class FakeD1 {
 const DAY = 24 * 60 * 60 * 1000;
 const T0 = new Date('2026-11-15T04:00:00Z').getTime(); // 北京时间 12:00
 
-function newBilling(db: FakeD1, freeDaily = 3, now = T0) {
-  return createBilling(db as never, { freeDaily, now });
+function newBilling(db: FakeD1, freeTotal = 3, now = T0) {
+  return createBilling(db as never, { freeTotal, now });
 }
 
 (async () => {
@@ -123,12 +122,14 @@ function newBilling(db: FakeD1, freeDaily = 3, now = T0) {
   const anonFree = await b.consume(anon);
   assert.ok(anonFree.ok && anonFree.source === 'free', '匿名主体应有独立免费额度');
 
-  // 6) 跨自然日：免费额度重置
+  // 6) 累计制：跨自然日免费额度不重置（免费已尽时跨日只能继续扣卡密）
   const bNext = newBilling(db, 3, T0 + DAY);
   const nextDay = await bNext.consume(user);
-  assert.ok(nextDay.ok && nextDay.source === 'free', '次日免费额度应重置');
+  assert.ok(nextDay.ok && nextDay.source === 'credit', '跨日不得重新获得免费额度，应继续扣卡密');
+  assert.equal(nextDay.freeLeft, 0, '累计剩余免费应为 0');
+  assert.equal(nextDay.credits, 48, '卡密应再扣 1 次到 48');
 
-  // 7) freeDaily=0：完全无免费额度，直接走卡密
+  // 7) freeTotal=0：完全无免费额度，直接走卡密
   const db2 = new FakeD1();
   db2.cards.set('ZW-DDDD-EEEE-FFFF', { credits: 10, status: 'unused' });
   const b2 = newBilling(db2, 0);
@@ -147,5 +148,5 @@ function newBilling(db: FakeD1, freeDaily = 3, now = T0) {
   assert.ok(!fail.ok && fail.code === 'STORAGE_ERROR', '钱包写入失败应报错');
   assert.equal(db3.cards.get('ZW-GGGG-HHHH-IIII')?.status, 'unused', '占卡应回滚');
 
-  console.log('billing.test.ts: PASS (免费额度 / 卡密兑换单次有效 / 扣减顺序 / 主体隔离 / 跨日重置 / 失败回滚)');
+  console.log('billing.test.ts: PASS (累计免费额度 / 卡密兑换单次有效 / 扣减顺序 / 主体隔离 / 跨日不重置 / 失败回滚)');
 })().catch((e) => { console.error('FAIL:', e); process.exit(1); });

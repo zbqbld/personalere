@@ -3,7 +3,7 @@
  *
  * 开关与额度全部来自服务端环境（wrangler vars / .env），不进客户端包：
  *   BILLING_MODE=card        启用卡密次数制；未设置或为其他值 = 完全关闭（现状）
- *   BILLING_FREE_DAILY=3     每主体每天免费解读次数（默认 3）
+ *   BILLING_FREE_TOTAL=3     每主体累计免费解读次数（默认 3，不按天重置）
  *
  * 门禁策略（fail-open）：数据库不可用、识别不到主体时放行，
  * 避免基础设施抖动把全部用户的 AI 解读打死；滥用防护依赖账号体系。
@@ -15,14 +15,14 @@ import type { D1Like } from './core';
 
 export interface BillingRuntimeConfig {
   enabled: boolean;
-  freeDaily: number;
+  freeTotal: number;
 }
 
 export function billingConfig(): BillingRuntimeConfig {
   const enabled = process.env.BILLING_MODE === 'card';
-  const raw = parseInt(process.env.BILLING_FREE_DAILY || '3', 10);
-  const freeDaily = Number.isFinite(raw) ? Math.max(0, raw) : 3;
-  return { enabled, freeDaily };
+  const raw = parseInt(process.env.BILLING_FREE_TOTAL || '3', 10);
+  const freeTotal = Number.isFinite(raw) ? Math.max(0, raw) : 3;
+  return { enabled, freeTotal };
 }
 
 /** 匿名主体：IP + UA 做哈希（不落库明文 IP），同一浏览器当日稳定 */
@@ -65,14 +65,14 @@ export async function billingGate(req: Request, token: string | undefined | null
     const cookieAnon = req.headers.get('cookie')?.match(/zw_anon=([^;]+)/)?.[1];
     const identity: BillingIdentity = { ownerId, anonId: ownerId ? null : await anonIdOf(req, cookieAnon) };
 
-    const billing = createBilling(db, { freeDaily: config.freeDaily });
+    const billing = createBilling(db, { freeTotal: config.freeTotal });
     const result = await billing.consume(identity);
     if (result.ok) return { pass: true };
 
     const body = JSON.stringify({
       ok: false,
       code: 'QUOTA_EXCEEDED',
-      message: '今日 1 次免费解读已用完。请在「账号与数据归属」面板的「解读额度」处输入卡密兑换，兑换后即可继续解读。',
+      message: `每账号累计 ${config.freeTotal} 次免费解读已用完。请在「账号与数据归属」面板的「解读额度」处输入卡密兑换，兑换后即可继续解读。`,
       data: { freeLimit: result.status.freeLimit, freeUsed: result.status.freeUsed, credits: result.status.credits, loggedIn: Boolean(ownerId) },
     });
     return {
@@ -99,5 +99,5 @@ export async function billingIdentity(req: Request, token: string | undefined | 
 }
 
 export function createBillingForRequest(db: unknown, config: BillingRuntimeConfig) {
-  return createBilling(db as D1Like, { freeDaily: config.freeDaily });
+  return createBilling(db as D1Like, { freeTotal: config.freeTotal });
 }

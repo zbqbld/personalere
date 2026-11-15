@@ -547,7 +547,7 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
           if (err?.code === 'QUOTA_EXCEEDED') {
             const credits = Number(err?.data?.credits) || 0;
             failureMessage = credits > 0
-              ? `今日免费次数已用完，但剩余的 ${credits} 次卡密次数没能扣减成功，请联系维护者。`
+              ? `免费次数已用完，但剩余的 ${credits} 次卡密次数没能扣减成功，请联系维护者。`
               : '今日 1 次免费解读已用完。请在「账号与数据归属」面板的「解读额度」处输入卡密兑换，兑换后即可继续解读。';
           } else if (err?.message) {
             failureMessage = String(err.message);
@@ -816,7 +816,7 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
       <div className="ios-compose">
         {quota && (
           <div className={`ios-quota${quota.freeLeft <= 0 && quota.credits <= 0 ? ' ios-quota-low' : ''}`}>
-            {quota.freeLeft > 0 ? `今日免费剩 ${quota.freeLeft} 次` : '今日免费已用完'}
+            {quota.freeLeft > 0 ? `免费剩 ${quota.freeLeft} 次` : '免费次数已用完'}
             <span className="ios-quota-sep">·</span>
             {`卡密剩 ${quota.credits} 次`}
           </div>

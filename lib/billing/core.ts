@@ -5,7 +5,7 @@
  *  1. 纯逻辑 + 注入式 D1 最小接口，可在 Node 回归测试里用 Fake D1 驱动；
  *  2. 主体统一为 subject：'u:<ownerId>'（登录）或 'a:<ipHash>'（匿名），
  *     钱包与每日免费计数共用同一套表；
- *  3. 消耗顺序：当天免费额度 → 卡密次数，两者都无则拒绝（402）；
+ *  3. 消耗顺序：累计免费额度（每主体共 N 次，不按天重置）→ 卡密次数，两者都无则拒绝（402）；
  *  4. 卡密兑换走 batch 原子写：先占卡（status unused→used）再给钱包加次数；
  *  5. 所有 SQL 都用参数绑定，不接受拼接输入。
  */
@@ -22,8 +22,8 @@ export interface D1Like {
 }
 
 export interface BillingOptions {
-  /** 每个主体每天可免费使用的解读次数；0 = 无免费额度 */
-  freeDaily: number;
+  /** 每个主体累计可免费使用的解读次数（一次性总额，不按天重置）；0 = 无免费额度 */
+  freeTotal: number;
   /** 注入当前时间（毫秒），测试用；默认 Date.now() */
   now?: number;
 }
@@ -51,11 +51,8 @@ export type ConsumeResult =
   | { ok: true; source: 'free' | 'credit'; freeLeft: number; credits: number }
   | { ok: false; code: 'QUOTA_EXCEEDED'; status: BillingStatus };
 
-/** 自然日（UTC+8）：用户在国内，按北京时间计免费额度 */
-export function dayKeyOf(now: number): string {
-  const d = new Date(now + 8 * 60 * 60 * 1000);
-  return d.toISOString().slice(0, 10);
-}
+/** 免费额度累计行固定写在 day='__total__'，与历史按天行区分 */
+export const FREE_TOTAL_KEY = '__total__';
 
 function subjectOf(identity: BillingIdentity): string | null {
   if (identity.ownerId) return `u:${identity.ownerId}`;
@@ -64,15 +61,13 @@ function subjectOf(identity: BillingIdentity): string | null {
 }
 
 export function createBilling(db: D1Like, options: BillingOptions) {
-  const freeDaily = Math.max(0, Math.floor(options.freeDaily));
+  const freeTotal = Math.max(0, Math.floor(options.freeTotal));
   const now = () => (typeof options.now === 'number' ? options.now : Date.now());
 
   const readStatus = async (subject: string): Promise<BillingStatus> => {
-    const n = now();
-    const day = dayKeyOf(n);
     const usageRow = await db
       .prepare('SELECT count FROM billing_usage WHERE subject = ? AND day = ?')
-      .bind(subject, day)
+      .bind(subject, FREE_TOTAL_KEY)
       .first<{ count: number }>();
     const freeUsed = usageRow && Number.isFinite(usageRow.count) ? usageRow.count : 0;
     const walletRow = await db
@@ -80,8 +75,9 @@ export function createBilling(db: D1Like, options: BillingOptions) {
       .bind(subject)
       .first<{ credits: number }>();
     const credits = walletRow && Number.isFinite(walletRow.credits) ? walletRow.credits : 0;
-    const freeLeft = Math.max(0, freeDaily - freeUsed);
-    return { freeLimit: freeDaily, freeUsed, freeLeft, credits, canUse: freeLeft > 0 || credits > 0 };
+    const freeLeft = Math.max(0, freeTotal - freeUsed);
+    // freeLimit 字段名保留旧契约，语义为「累计免费总额」
+    return { freeLimit: freeTotal, freeUsed, freeLeft, credits, canUse: freeLeft > 0 || credits > 0 };
   };
 
   return {
@@ -95,12 +91,11 @@ export function createBilling(db: D1Like, options: BillingOptions) {
     /** 消耗一次：先用免费额度，用完扣卡密次数；都没有则返回 QUOTA_EXCEEDED */
     async consume(identity: BillingIdentity): Promise<ConsumeResult> {
       const subject = subjectOf(identity);
-      if (!subject) return { ok: false, code: 'QUOTA_EXCEEDED', status: { freeLimit: freeDaily, freeUsed: 0, freeLeft: 0, credits: 0, canUse: false } };
+      if (!subject) return { ok: false, code: 'QUOTA_EXCEEDED', status: { freeLimit: freeTotal, freeUsed: 0, freeLeft: 0, credits: 0, canUse: false } };
       const n = now();
-      const day = dayKeyOf(n);
 
-      if (freeDaily > 0) {
-        // 条件递增：count < freeDaily 才写入，超限时不产生变更（changes=0）
+      if (freeTotal > 0) {
+        // 条件递增：累计 count < freeTotal 才写入，超限时不产生变更（changes=0）
         const r = await db
           .prepare(
             `INSERT INTO billing_usage (subject, day, count, updated_at)
@@ -108,7 +103,7 @@ export function createBilling(db: D1Like, options: BillingOptions) {
              ON CONFLICT(subject, day) DO UPDATE SET count = count + 1, updated_at = ?
              WHERE count < ?`,
           )
-          .bind(subject, day, n, n, freeDaily)
+          .bind(subject, FREE_TOTAL_KEY, n, n, freeTotal)
           .run<{ meta?: { changes?: number } }>();
         const changes = r?.meta?.changes ?? 0;
         if (changes > 0) {

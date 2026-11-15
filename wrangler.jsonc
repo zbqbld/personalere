@@ -36,7 +36,7 @@
     "NEXT_PUBLIC_SITE_URL": "https://ziwei-doushu-8uh.pages.dev",
     // 计费：卡密次数制。删除 BILLING_MODE 行或改为其他值即整体关闭（恢复全免费现状）。
     "BILLING_MODE": "card",
-    "BILLING_FREE_DAILY": "3"
+    "BILLING_FREE_TOTAL": "3"
   },
   "observability": {
     "enabled": true
