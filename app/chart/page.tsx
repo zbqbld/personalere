@@ -113,7 +113,11 @@ export default function ChartPage() {
   // ── 恢复数据：身份确认完成后执行一次（只用本地数据，不访问网络）──
   useEffect(() => {
     if (authState === 'loading') return;
-    if (ACCOUNT_ENABLED && authState !== 'in') return; // 未登录：不恢复，只显示登录界面
+    if (ACCOUNT_ENABLED && authState !== 'in') {
+      // 未登录：显示登录界面即可，没有本地数据可恢复
+      setHydrated(true);
+      return;
+    }
     if (authDoneRef.current) return;
     authDoneRef.current = true;
 
