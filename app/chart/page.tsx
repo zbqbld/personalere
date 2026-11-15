@@ -18,7 +18,7 @@ import {
 } from '@/lib/ziwei/memory';
 import { saveUserProfiles } from '@/lib/ziwei/user-profiles';
 import AccountPanel from '@/components/AccountPanel';
-import { applyAccountScope, clearAccountProfiles, saveAccountProfiles } from '@/lib/account/client';
+import { applyAccountScope, clearAccountProfiles, loadAccount, saveAccountProfiles } from '@/lib/account/client';
 import { ACCOUNT_ENABLED } from '@/lib/account/feature';
 import type { ZiweiChart, Palace, BirthInfo } from '@/lib/ziwei/types';
 
@@ -56,6 +56,9 @@ export default function ChartPage() {
   const [chatResetSignal, setChatResetSignal] = useState(0);
   /** 当前登录账号；null 表示匿名模式，用户档案只写本地 */
   const [accountOwnerId, setAccountOwnerId] = useState<string | null>(null);
+  /** 登录门禁：loading=身份确认中；in=已登录（或本地免登录模式）；out=未登录 */
+  const [authState, setAuthState] = useState<'loading' | 'in' | 'out'>('loading');
+  const authDoneRef = useRef(false);
   const formRef = useRef<BirthFormState | null>(null);
 
   const buildFrom = useCallback((form: BirthFormState): ZiweiChart | null => {
@@ -74,11 +77,45 @@ export default function ChartPage() {
     }
   }, []);
 
-  // ── 挂载时恢复：只用本地数据，不访问网络 ──────────────────
+  // ── 身份确认：线上必须登录后才能起盘；本地免登录模式直接放行 ──
   useEffect(() => {
-    // 本地免注册模式：若之前登录过，先把残留的账号命名空间清掉，
-    // 否则会读到旧账号下的键，看起来像「还有账号」。
-    if (!ACCOUNT_ENABLED) applyAccountScope(null);
+    if (!ACCOUNT_ENABLED) {
+      // 本地免注册模式：清掉残留的账号命名空间，键名回到匿名空间
+      applyAccountScope(null);
+      setAuthState('in');
+      return;
+    }
+    let alive = true;
+    loadAccount()
+      .then(a => {
+        if (!alive) return;
+        applyAccountScope(a?.ownerId ?? null);
+        setAccountOwnerId(a?.ownerId ?? null);
+        setAuthState(a ? 'in' : 'out');
+      })
+      .catch(() => { if (alive) setAuthState('out'); });
+    return () => { alive = false; };
+  }, []);
+
+  /** AccountPanel 登录 / 登出回调：同步门禁状态与本地数据命名空间 */
+  const handleAccountChange = (ownerId: string | null) => {
+    setAccountOwnerId(ownerId);
+    if (!ACCOUNT_ENABLED) return;
+    applyAccountScope(ownerId);
+    if (ownerId) {
+      authDoneRef.current = false; // 换了账号身份，重新恢复该账号名下的数据
+      setAuthState('in');
+    } else {
+      setAuthState('out');
+    }
+  };
+
+  // ── 恢复数据：身份确认完成后执行一次（只用本地数据，不访问网络）──
+  useEffect(() => {
+    if (authState === 'loading') return;
+    if (ACCOUNT_ENABLED && authState !== 'in') return; // 未登录：不恢复，只显示登录界面
+    if (authDoneRef.current) return;
+    authDoneRef.current = true;
 
     // 工作台「最近解读 → 继续追问」深链：/chart?chat=<会话key>
     // 会话里存有排盘输入，直接重建命盘；InsightPanel 会按同一 key 自动接上对话。
@@ -110,7 +147,7 @@ export default function ChartPage() {
       setFormKey(k => k + 1);
     }
     setHydrated(true);
-  }, [buildFrom, buildFromBirthInfo]);
+  }, [authState, buildFrom, buildFromBirthInfo]);
 
   useEffect(() => {
     if (!toast) return;
@@ -282,10 +319,23 @@ export default function ChartPage() {
         </div>
       </header>
 
-      {/* 首帧遮罩：避免「表单 → 自动恢复命盘」的视觉跳变；SSR 与客户端首帧一致 */}
-      {!hydrated && <div className="zw-boot">正在恢复上次的信息…</div>}
+      {/* 首帧遮罩：身份确认与数据恢复期间盖住页面，避免视觉跳变；SSR 与客户端首帧一致 */}
+      {!hydrated && (
+        <div className="zw-boot">{authState === 'loading' ? '正在验证登录状态…' : '正在恢复上次的信息…'}</div>
+      )}
 
-      {chart ? (
+      {/* 线上门禁：未登录只显示注册 / 登录界面，不暴露起盘表单 */}
+      {ACCOUNT_ENABLED && authState === 'out' ? (
+        <>
+          <div className="zw-hero" style={{ maxWidth: 560 }}>
+            <h1>登录后开始起盘</h1>
+            <p>注册或登录后即可排盘与 AI 解读；新用户每天 1 次免费解读，兑换卡密可获得更多次数。</p>
+          </div>
+          <div className="zw-form-wrap" style={{ maxWidth: 560 }}>
+            <AccountPanel onAccountChange={handleAccountChange} />
+          </div>
+        </>
+      ) : chart ? (
         <>
           {memory && autoRestored && (
             <div className="zw-status-strip">
@@ -348,7 +398,7 @@ export default function ChartPage() {
               </section>
             )}
 
-            {ACCOUNT_ENABLED && <AccountPanel onAccountChange={setAccountOwnerId} />}
+            {ACCOUNT_ENABLED && <AccountPanel onAccountChange={handleAccountChange} />}
 
             <BirthForm
               key={formKey}

@@ -237,11 +237,8 @@ export default function AccountPanel({ onAccountChange }: AccountPanelProps) {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button type="submit" disabled={busy} style={buttonStyle}>
-              {busy ? '处理中…' : mode === 'register' ? '注册并绑定本机档案' : '登录'}
+              {busy ? '处理中…' : mode === 'register' ? '注册' : '登录'}
             </button>
-            <span style={{ color: hintClr, fontSize: '10px', lineHeight: 1.5 }}>
-              不注册也可继续匿名起盘，数据仅存本机
-            </span>
           </div>
         </form>
       )}
