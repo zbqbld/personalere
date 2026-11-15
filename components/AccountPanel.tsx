@@ -200,7 +200,7 @@ export default function AccountPanel({ onAccountChange, embedded = false }: Acco
     padding: '10px 16px', borderRadius: 'var(--r-sm)', fontSize: '14px', fontWeight: 600,
     border: 'none', cursor: busy ? 'not-allowed' : 'pointer',
     background: 'var(--ac)', color: 'var(--btn-fg)', opacity: busy ? 0.6 : 1,
-    boxShadow: isDark ? 'none' : '0 2px 8px rgba(0,122,255,0.18)',
+    boxShadow: isDark ? 'none' : '0 2px 8px rgba(168,127,18,0.18)',
   };
 
   return (

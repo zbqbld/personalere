@@ -263,7 +263,7 @@ export default function HemingPage() {
                   background: 'var(--ac)',
                   color: '#FFFFFF', fontSize: '15px', fontWeight: 600,
                   letterSpacing: '0', cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(0,122,255,0.20)',
+                  boxShadow: '0 4px 14px rgba(168,127,18,0.20)',
                   transition: 'transform 0.15s',
                 }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; }}

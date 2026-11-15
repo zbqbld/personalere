@@ -392,7 +392,7 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
           {(['male', 'female'] as const).map(g => {
             const active = form.gender === g;
             const isMale = g === 'male';
-            const accent = isMale ? '0,122,255' : '255,45,85';
+            const accent = isMale ? '168,127,18' : '255,45,85';
             return (
               <motion.button
                 key={g}
@@ -478,7 +478,7 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
           cursor: loading ? 'not-allowed' : 'pointer',
           background: loading ? 'var(--bg-2)' : 'var(--ac)',
           color: loading ? 'var(--tx-3)' : '#FFFFFF',
-          boxShadow: loading || isDark ? 'none' : '0 4px 14px rgba(0,122,255,0.22)',
+          boxShadow: loading || isDark ? 'none' : '0 4px 14px rgba(168,127,18,0.22)',
           transition: 'opacity 0.15s ease, transform 0.12s ease',
         }}
       >

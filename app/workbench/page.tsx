@@ -147,11 +147,11 @@ export default function WorkbenchPage() {
           <div className="wb-brand">
             <span className="zw-brand-mark" aria-hidden="true">
               <svg viewBox="0 0 64 64" width="30" height="30">
-                <rect width="64" height="64" rx="16" fill="#007AFF" />
+                <rect width="64" height="64" rx="16" fill="#131A2E" />
                 <circle cx="32" cy="32" r="20" fill="none" stroke="#FFFFFF" strokeWidth="1.5" opacity="0.5" />
                 <circle cx="32" cy="32" r="12.5" fill="none" stroke="#FFFFFF" strokeWidth="1.2" opacity="0.32" />
                 <path d="M32 15 L34.5 27.5 L47 30 L34.5 32.5 L32 45 L29.5 32.5 L17 30 L29.5 27.5 Z" fill="#FFFFFF" />
-                <circle cx="32" cy="30" r="2.4" fill="#007AFF" />
+                <circle cx="32" cy="30" r="2.4" fill="#131A2E" />
                 <circle cx="47.5" cy="16.5" r="2.5" fill="#FFFFFF" opacity="0.95" />
                 <circle cx="16.5" cy="47.5" r="1.8" fill="#FFFFFF" opacity="0.7" />
               </svg>
