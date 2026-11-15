@@ -72,7 +72,7 @@ export async function billingGate(req: Request, token: string | undefined | null
     const body = JSON.stringify({
       ok: false,
       code: 'QUOTA_EXCEEDED',
-      message: '今日免费解读次数已用完。兑换卡密后可继续使用（工作台 → 兑换卡密）。',
+      message: '今日 1 次免费解读已用完。请在「账号与数据归属」面板的「解读额度」处输入卡密兑换，兑换后即可继续解读。',
       data: { freeLimit: result.status.freeLimit, freeUsed: result.status.freeUsed, credits: result.status.credits, loggedIn: Boolean(ownerId) },
     });
     return {

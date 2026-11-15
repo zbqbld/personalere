@@ -516,6 +516,8 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
   }, [selectedSiHua]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const streamResponse = async (apiMessages: ApiMessage[]) => {
+    // 面向用户的失败文案：HTTP 错误（尤其 402）在这里定制，流中断时保持通用提示
+    let failureMessage = '解读失败，请稍后重试。';
     try {
       const res = await fetch('/api/interpret', {
         method: 'POST',
@@ -524,18 +526,18 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
       });
       if (res.status === 404) throw new Error('api-missing');
       if (!res.ok) {
-        // 计费额度用完（402）时给出明确指引，其余错误保持通用提示
-        let msg = '解读失败，请稍后重试。';
         try {
           const err = await res.json();
           if (err?.code === 'QUOTA_EXCEEDED') {
             const credits = Number(err?.data?.credits) || 0;
-            msg = credits > 0
-              ? `今日免费次数已用完，已自动改用卡密次数后仍失败？剩余卡密次数 ${credits} 次。若持续失败请联系维护者。`
-              : '今日免费解读次数已用完。到「工作台 → 账号」兑换卡密后可继续解读。';
+            failureMessage = credits > 0
+              ? `今日免费次数已用完，但剩余的 ${credits} 次卡密次数没能扣减成功，请联系维护者。`
+              : '今日 1 次免费解读已用完。请在「账号与数据归属」面板的「解读额度」处输入卡密兑换，兑换后即可继续解读。';
+          } else if (err?.message) {
+            failureMessage = String(err.message);
           }
         } catch { /* 保留通用提示 */ }
-        throw new Error(msg);
+        throw new Error('http-error');
       }
       if (!res.body) throw new Error('无响应流');
 
@@ -570,7 +572,7 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
       }
     } catch (e) {
       const missing = e instanceof Error && e.message === 'api-missing';
-      setMessages(prev => [...prev, { role: 'assistant', content: missing ? '开源版不含 AI 解读接口（/api/interpret），需要你自己实现后才能用，详见 README「快速开始」。排盘本身不需要任何 API Key。' : '解读失败，请稍后重试。', ts: Date.now() }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: missing ? '开源版不含 AI 解读接口（/api/interpret），需要你自己实现后才能用，详见 README「快速开始」。排盘本身不需要任何 API Key。' : failureMessage, ts: Date.now() }]);
     } finally {
       setLoading(false);
       loadingRef.current = false;
