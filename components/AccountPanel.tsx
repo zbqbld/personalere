@@ -261,6 +261,12 @@ export default function AccountPanel({ onAccountChange }: AccountPanelProps) {
             </div>
           )}
 
+          {mode === 'register' && (
+            <p style={{ color: hintClr, fontSize: '10px', lineHeight: 1.5, margin: '0 0 10px' }}>
+              收不到验证码时，请检查邮箱的「垃圾邮件 / 订阅邮件」文件夹。
+            </p>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
             <label style={{ color: labelClr, fontSize: '11px' }}>
               昵称（可选）
@@ -326,6 +332,7 @@ export default function AccountPanel({ onAccountChange }: AccountPanelProps) {
           )}
           <p style={{ color: hintClr, fontSize: '11px', margin: '6px 0 0' }}>
             每次 AI 解读 / 合盘分析消耗 1 次：先用当日免费额度，用完自动扣卡密次数。
+            次数不足时向维护者购买卡密，在上方输入即可到账。
           </p>
         </div>
       )}
