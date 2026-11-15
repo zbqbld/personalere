@@ -330,15 +330,44 @@ export default function ChartPage() {
 
       {/* 线上门禁：未登录只显示注册 / 登录界面，不暴露起盘表单 */}
       {ACCOUNT_ENABLED && authState === 'out' ? (
-        <>
-          <div className="zw-hero" style={{ maxWidth: 560 }}>
-            <h1>登录后开始起盘</h1>
-            <p>注册或登录后即可排盘与 AI 解读；新用户每天 1 次免费解读，兑换卡密可获得更多次数。</p>
+        <div className="auth-scene">
+          <div className="auth-bg" aria-hidden="true">
+            <svg className="auth-stars" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
+              {[[60,90,1.6],[210,40,1.1],[380,140,1.8],[560,60,1.2],[740,110,1.5],[930,50,1.1],[1120,150,1.7],[130,300,1.2],[330,260,1.5],[520,330,1.0],[700,270,1.8],[900,320,1.2],[1090,380,1.4],[80,520,1.5],[260,600,1.1],[470,540,1.7],[660,610,1.2],[860,560,1.5],[1050,640,1.1],[180,720,1.4],[420,760,1.1],[640,730,1.6],[830,780,1.1],[1010,740,1.4]].map(([x, y, r], i) => (
+                <circle key={i} cx={x} cy={y} r={r} fill="currentColor" />
+              ))}
+            </svg>
+            <svg className="auth-dial" viewBox="0 0 400 400" fill="none" stroke="currentColor" strokeWidth="1">
+              <circle cx="200" cy="200" r="186" />
+              <circle cx="200" cy="200" r="150" />
+              <circle cx="200" cy="200" r="110" />
+              <circle cx="200" cy="200" r="36" />
+              {[[310,200,386,200],[295.3,255,361.1,293],[255,295.3,293,361.1],[200,310,200,386],[145,295.3,107,361.1],[104.7,255,38.9,293],[90,200,14,200],[104.7,145,38.9,107],[145,104.7,107,38.9],[200,90,200,14],[255,104.7,293,38.9],[295.3,145,361.1,107]].map(([x1, y1, x2, y2], i) => (
+                <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} />
+              ))}
+              <circle cx="200" cy="200" r="3" fill="currentColor" stroke="none" />
+            </svg>
           </div>
-          <div className="zw-form-wrap" style={{ maxWidth: 560 }}>
-            <AccountPanel onAccountChange={handleAccountChange} />
+          <div className="auth-card">
+            <div className="auth-brand">
+              <span className="auth-logo" aria-hidden="true">
+                <svg viewBox="0 0 64 64" width="52" height="52">
+                  <rect width="64" height="64" rx="16" fill="#007AFF" />
+                  <circle cx="32" cy="32" r="20" fill="none" stroke="#FFFFFF" strokeWidth="1.5" opacity="0.5" />
+                  <circle cx="32" cy="32" r="12.5" fill="none" stroke="#FFFFFF" strokeWidth="1.2" opacity="0.32" />
+                  <path d="M32 15 L34.5 27.5 L47 30 L34.5 32.5 L32 45 L29.5 32.5 L17 30 L29.5 27.5 Z" fill="#FFFFFF" />
+                  <circle cx="32" cy="30" r="2.4" fill="#007AFF" />
+                  <circle cx="47.5" cy="16.5" r="2.5" fill="#FFFFFF" opacity="0.95" />
+                  <circle cx="16.5" cy="47.5" r="1.8" fill="#FFFFFF" opacity="0.7" />
+                </svg>
+              </span>
+              <h1>紫微命盘</h1>
+              <p>AI 深度解读 · 十四主星 × 十二宫位</p>
+            </div>
+            <AccountPanel embedded onAccountChange={handleAccountChange} />
+            <p className="auth-foot">新用户每天 1 次免费解读；注册后数据仅本人可见，换设备登录仍可使用。</p>
           </div>
-        </>
+        </div>
       ) : chart ? (
         <>
           {memory && autoRestored && (

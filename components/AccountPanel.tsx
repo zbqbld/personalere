@@ -22,9 +22,11 @@ import { clearUserProfiles, listUserProfiles } from '@/lib/ziwei/user-profiles';
 
 interface AccountPanelProps {
   onAccountChange?: (ownerId: string | null) => void;
+  /** 嵌入登录门禁页时去掉自带卡片外壳，由外层统一提供容器 */
+  embedded?: boolean;
 }
 
-export default function AccountPanel({ onAccountChange }: AccountPanelProps) {
+export default function AccountPanel({ onAccountChange, embedded = false }: AccountPanelProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [account, setAccount] = useState<AccountInfo | null>(null);
@@ -202,7 +204,11 @@ export default function AccountPanel({ onAccountChange }: AccountPanelProps) {
   };
 
   return (
-    <section style={{ background: bg, border: `1px solid ${border}`, borderRadius: '20px', padding: '18px 20px', marginBottom: '16px' }}>
+    <section
+      style={embedded
+        ? { padding: '4px 0 0' }
+        : { background: bg, border: `1px solid ${border}`, borderRadius: '20px', padding: '18px 20px', marginBottom: '16px' }}
+    >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
         <h3 className="ios-section-title" style={{ color: goldText, margin: 0 }}>
           账号与数据归属

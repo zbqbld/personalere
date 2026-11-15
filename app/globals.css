@@ -1689,3 +1689,70 @@ a.wb-row-main:hover .wb-row-time { color: var(--tx-2); }
 .zw-wb-link:hover { background: var(--ac-bg); border-color: var(--ac-bdr); }
 @media (max-width: 767px) { .zw-wb-link { display: none; } }
 
+
+/* ─── 登录门禁页（线上未登录视图） ─────────────────────────── */
+.auth-scene {
+  position: relative;
+  min-height: calc(100vh - 60px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px 56px;
+  overflow: hidden;
+}
+.auth-bg { position: absolute; inset: 0; pointer-events: none; }
+.auth-bg::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(560px 420px at 16% 10%, rgba(0, 122, 255, 0.13), transparent 62%),
+    radial-gradient(640px 480px at 86% 18%, rgba(122, 63, 168, 0.13), transparent 62%),
+    radial-gradient(760px 560px at 50% 110%, rgba(0, 95, 148, 0.10), transparent 62%);
+}
+.auth-stars { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--tx-3); opacity: 0.45; }
+.auth-dial {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: min(82vw, 640px);
+  height: auto;
+  transform: translate(-50%, -50%);
+  color: var(--tx-3);
+  opacity: 0.15;
+  animation: auth-dial-spin 160s linear infinite;
+}
+@keyframes auth-dial-spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-dial { animation: none; }
+}
+.auth-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 460px;
+  background: var(--bg-card);
+  border: 1px solid var(--bdr);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-lg);
+  padding: 26px 22px 20px;
+}
+.auth-brand { text-align: center; margin: 0 0 14px; }
+.auth-logo {
+  display: inline-flex;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  box-shadow: var(--sh-sm);
+}
+.auth-brand h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.06em; color: var(--tx-0); margin: 0 0 4px; }
+.auth-brand p { font-size: 12px; color: var(--tx-3); margin: 0; letter-spacing: 0.02em; }
+.auth-foot { text-align: center; font-size: 11px; line-height: 1.7; color: var(--tx-3); margin: 12px 0 0; }
+@media (max-width: 480px) {
+  .auth-scene { padding: 18px 12px 44px; }
+  .auth-card { padding: 22px 16px 16px; }
+}
