@@ -121,12 +121,19 @@ export async function POST(req: NextRequest) {
     const saved = await codes.saveCode(email, code, Date.now());
     if (!saved) return fail('RATE_LIMITED', '发送太频繁，请 1 分钟后再试', 429);
 
-    const result = await sendEmail(
-      email,
-      '紫微命盘 注册验证码',
-      `你的注册验证码是：${code}\n\n10 分钟内有效。如果不是你本人操作，请忽略本邮件。`,
-    );
+    let result: Awaited<ReturnType<typeof sendEmail>>;
+    try {
+      result = await sendEmail(
+        email,
+        '紫微命盘 注册验证码',
+        `你的注册验证码是：${code}\n\n10 分钟内有效。如果不是你本人操作，请忽略本邮件。`,
+      );
+    } catch {
+      result = { ok: false, code: 'SEND_FAILED', message: '邮件发送失败，请稍后重试' };
+    }
     if (!result.ok) {
+      // 回滚占码：否则用户会白等 60 秒重发锁，邮箱里却一封邮件都没有
+      await codes.clearCode(email);
       return NextResponse.json({ ok: false, code: result.code, message: result.message }, { status: 503 });
     }
     return NextResponse.json({ ok: true, data: { sent: true, expiresInSec: Math.floor(EMAIL_CODE_TTL_MS / 1000) } });

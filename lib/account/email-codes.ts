@@ -18,6 +18,8 @@ export const EMAIL_CODE_RESEND_INTERVAL_MS = 60 * 1000;
 export interface EmailCodeStore {
   /** 写入/覆盖验证码；返回 false 表示 60 秒内已发过，需稍后再试 */
   saveCode(email: string, code: string, now: number): Promise<boolean>;
+  /** 删除某邮箱的验证码（发信失败时回滚，让用户能立刻重发） */
+  clearCode(email: string): Promise<void>;
   /** 校验验证码：返回 'ok' | 'EXPIRED' | 'MISMATCH' | 'TOO_MANY_ATTEMPTS' | 'NOT_FOUND' */
   verifyCode(email: string, code: string, now: number): Promise<'ok' | 'EXPIRED' | 'MISMATCH' | 'TOO_MANY_ATTEMPTS' | 'NOT_FOUND'>;
 }
@@ -44,6 +46,10 @@ export function createEmailCodeStore(db: D1Like): EmailCodeStore {
         .bind(email, code, now + EMAIL_CODE_TTL_MS, now)
         .run();
       return true;
+    },
+
+    async clearCode(email) {
+      await db.prepare('DELETE FROM email_codes WHERE email = ?').bind(email).run();
     },
 
     async verifyCode(email, code, now) {

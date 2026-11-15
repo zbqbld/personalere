@@ -83,5 +83,12 @@ const T0 = new Date('2026-11-15T04:00:00Z').getTime();
   }
   assert.equal(await store.verifyCode('e@f.com', '222222', T0 + 2000), 'TOO_MANY_ATTEMPTS', '错误 5 次后即使码对也应作废');
 
-  console.log('email-codes.test.ts: PASS (重发限速 / 防重放 / 过期 / 错误次数上限)');
+  // 5) 发信失败回滚：clearCode 后同一时刻可立刻重新发码，不会被 60 秒锁住
+  await store.saveCode('g@h.com', '333333', T0);
+  assert.equal(await store.saveCode('g@h.com', '444444', T0 + 1000), false, '回滚前重发应被限速');
+  await store.clearCode('g@h.com');
+  assert.ok(await store.saveCode('g@h.com', '555555', T0 + 1000), '回滚后应能立刻重发');
+  assert.equal(await store.verifyCode('g@h.com', '555555', T0 + 2000), 'ok', '重发的新码应可用');
+
+  console.log('email-codes.test.ts: PASS (重发限速 / 防重放 / 过期 / 错误次数上限 / 发信失败回滚)');
 })().catch((e) => { console.error('FAIL:', e); process.exit(1); });
