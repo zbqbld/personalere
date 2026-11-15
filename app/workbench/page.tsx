@@ -23,6 +23,7 @@ import {
   type LastBirthMemory,
 } from '@/lib/ziwei/memory';
 import { listUserProfiles, type UserProfile } from '@/lib/ziwei/user-profiles';
+import { backfillChatBirthInfo } from '@/lib/ziwei/chat-backfill';
 import { applyAccountScope, loadAccount, type AccountInfo } from '@/lib/account/client';
 import { ACCOUNT_ENABLED } from '@/lib/account/feature';
 
@@ -101,6 +102,8 @@ export default function WorkbenchPage() {
 
   useEffect(() => {
     const readLocalData = () => {
+      // 先把旧会话缺失的生辰从用户档案回填，尽量让所有「最近解读」都能继续追问
+      backfillChatBirthInfo();
       setProfiles(listUserProfiles());
       setChats(readRecentChats());
       setChatCount(countChats());
