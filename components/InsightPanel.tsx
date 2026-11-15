@@ -523,7 +523,20 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
         body: JSON.stringify({ chart, messages: apiMessages }),
       });
       if (res.status === 404) throw new Error('api-missing');
-      if (!res.ok) throw new Error('请求失败');
+      if (!res.ok) {
+        // 计费额度用完（402）时给出明确指引，其余错误保持通用提示
+        let msg = '解读失败，请稍后重试。';
+        try {
+          const err = await res.json();
+          if (err?.code === 'QUOTA_EXCEEDED') {
+            const credits = Number(err?.data?.credits) || 0;
+            msg = credits > 0
+              ? `今日免费次数已用完，已自动改用卡密次数后仍失败？剩余卡密次数 ${credits} 次。若持续失败请联系维护者。`
+              : '今日免费解读次数已用完。到「工作台 → 账号」兑换卡密后可继续解读。';
+          }
+        } catch { /* 保留通用提示 */ }
+        throw new Error(msg);
+      }
       if (!res.body) throw new Error('无响应流');
 
       const reader = res.body.getReader();

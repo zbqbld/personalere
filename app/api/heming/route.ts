@@ -1,4 +1,6 @@
 import { NextRequest } from 'next/server';
+import { AUTH_COOKIE } from '@/lib/account/contract';
+import { billingGate } from '@/lib/billing/server';
 
 // 合盘 AI 分析接口（OpenAI 兼容流式协议）
 // 前端在 app/heming/page.tsx 以 SSE 方式消费：
@@ -33,6 +35,10 @@ export async function POST(req: NextRequest) {
   if (!body.chartA || !body.chartB) {
     return new Response('Missing chartA or chartB', { status: 400 });
   }
+
+  // 计费门禁：与 /api/interpret 同一套额度（未启用时直接放行）
+  const gate = await billingGate(req, req.cookies.get(AUTH_COOKIE)?.value);
+  if (!gate.pass) return gate.response!;
 
   const apiKey = process.env.DEEPSEEK_API_KEY || process.env.MIMO_API_KEY;
   const baseURL = (process.env.MIMO_BASE_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, '');

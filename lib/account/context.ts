@@ -7,6 +7,13 @@
  */
 import { setD1Binding } from './storage';
 
+let rawDB: unknown = null;
+
+/** 请求上下文里的原始 D1 binding（计费等非账号模块复用同一数据库） */
+export function getCloudflareDB(): unknown {
+  return rawDB;
+}
+
 export async function initAccountBackend(): Promise<void> {
   try {
     const pkg = '@opennextjs/cloudflare';
@@ -16,7 +23,10 @@ export async function initAccountBackend(): Promise<void> {
     if (typeof mod?.getCloudflareContext !== 'function') return;
     const ctx = await mod.getCloudflareContext({ async: true });
     const db = ctx?.env?.ZIWEI_DB;
-    if (db) setD1Binding(db);
+    if (db) {
+      rawDB = db;
+      setD1Binding(db);
+    }
   } catch {
     // 非 Cloudflare 环境：保持 Node 文件后端
   }

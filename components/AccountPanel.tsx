@@ -36,6 +36,13 @@ export default function AccountPanel({ onAccountChange }: AccountPanelProps) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
+  // 计费（线上 BILLING_MODE=card 时启用；接口未开启返回 enabled:false，整个区块不渲染）
+  interface BillingView { freeLimit: number; freeLeft: number; credits: number }
+  const [billing, setBilling] = useState<BillingView | null>(null);
+  const [cardCode, setCardCode] = useState('');
+  const [cardBusy, setCardBusy] = useState(false);
+  const [cardMsg, setCardMsg] = useState('');
+
   useEffect(() => {
     let alive = true;
     loadAccount().then(a => {
@@ -44,9 +51,39 @@ export default function AccountPanel({ onAccountChange }: AccountPanelProps) {
       onAccountChange?.(a?.ownerId ?? null);
       if (!a) applyAccountScope(null);
     });
+    fetch('/api/billing')
+      .then(r => r.json())
+      .then(j => { if (alive && j?.ok && j?.data?.enabled) setBilling(j.data as BillingView); })
+      .catch(() => { /* 计费未启用或网络异常：不展示该区块 */ });
     return () => { alive = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [account]);
+
+  const redeem = async () => {
+    const code = cardCode.trim();
+    if (!code || cardBusy) return;
+    setCardBusy(true);
+    setCardMsg('');
+    try {
+      const res = await fetch('/api/billing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'redeem', code }),
+      });
+      const j = await res.json().catch(() => null);
+      if (j?.ok) {
+        setCardMsg(`兑换成功，已加 ${j.data.added} 次，当前卡密剩 ${j.data.credits} 次`);
+        setCardCode('');
+        setBilling(b => (b ? { ...b, credits: Number(j.data.credits) || 0 } : b));
+      } else {
+        setCardMsg(j?.message || '兑换失败，请稍后重试');
+      }
+    } catch {
+      setCardMsg('网络异常，请稍后重试');
+    } finally {
+      setCardBusy(false);
+    }
+  };
 
   const publish = (a: AccountInfo | null) => {
     setAccount(a);
@@ -211,6 +248,40 @@ export default function AccountPanel({ onAccountChange }: AccountPanelProps) {
 
       {error && <p style={{ color: '#dc2626', fontSize: '11px', margin: '10px 0 0' }}>✕ {error}</p>}
       {notice && <p style={{ color: goldText, fontSize: '11px', margin: '10px 0 0' }}>✓ {notice}</p>}
+
+      {billing && (
+        <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: `1px solid ${border}` }}>
+          <p style={{ color: inputClr, fontSize: '13px', margin: '0 0 6px' }}>
+            解读额度：今日免费剩 {billing.freeLeft}/{billing.freeLimit} 次 · 卡密剩 {billing.credits} 次
+          </p>
+          {!account && (
+            <p style={{ color: hintClr, fontSize: '11px', margin: '0 0 8px' }}>
+              注册 / 登录后才能兑换卡密（次数绑定到账号，换设备登录仍有效）。
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input
+              value={cardCode}
+              onChange={e => setCardCode(e.target.value)}
+              placeholder="输入卡密，如 ZW-XXXX-XXXX-XXXX"
+              style={{ ...inputStyle, flex: 1 }}
+              disabled={cardBusy}
+            />
+            <button type="button" onClick={redeem} disabled={cardBusy || !account}
+              style={{ ...buttonStyle, padding: '9px 14px', fontSize: '12px', opacity: cardBusy || !account ? 0.5 : 1 }}>
+              {cardBusy ? '兑换中…' : '兑换'}
+            </button>
+          </div>
+          {cardMsg && (
+            <p style={{ color: cardMsg.startsWith('兑换成功') ? inputClr : '#FF9500', fontSize: '11px', margin: '6px 0 0' }}>
+              {cardMsg}
+            </p>
+          )}
+          <p style={{ color: hintClr, fontSize: '11px', margin: '6px 0 0' }}>
+            每次 AI 解读 / 合盘分析消耗 1 次：先用当日免费额度，用完自动扣卡密次数。
+          </p>
+        </div>
+      )}
     </section>
   );
 }

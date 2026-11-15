@@ -1,4 +1,6 @@
 import { NextRequest } from 'next/server';
+import { AUTH_COOKIE } from '@/lib/account/contract';
+import { billingGate } from '@/lib/billing/server';
 
 // 命盘 AI 解读接口（OpenAI 兼容流式协议）
 // 前端在 components/ChatPanel.tsx / InsightPanel.tsx 以 SSE 方式消费：
@@ -20,6 +22,10 @@ export async function POST(req: NextRequest) {
   } catch {
     return new Response('Invalid JSON', { status: 400 });
   }
+
+  // 计费门禁：BILLING_MODE=card 时按「每日免费额度 → 卡密次数」扣减（未启用时直接放行）
+  const gate = await billingGate(req, req.cookies.get(AUTH_COOKIE)?.value);
+  if (!gate.pass) return gate.response!;
 
   const apiKey = process.env.DEEPSEEK_API_KEY || process.env.MIMO_API_KEY;
   const baseURL = (process.env.MIMO_BASE_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, '');
