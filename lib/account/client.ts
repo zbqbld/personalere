@@ -95,6 +95,27 @@ export async function loginAccount(
   });
 }
 
+/** 邮箱验证码注册：username 即邮箱，需先通过 send-email-code 获取验证码 */
+export async function registerWithEmail(
+  input: { email: string; code: string; password: string; confirmPassword: string; nickname?: string },
+  bind: ProfilePayload[] = [],
+): Promise<ApiResult<{ account: AccountInfo; bound: number }>> {
+  return call<{ account: AccountInfo; bound: number }>('/api/account', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'register-email', ...input, bind }),
+  });
+}
+
+/** 发送邮箱注册验证码；60 秒内重复发送会被服务端限速拒绝 */
+export async function sendEmailCode(
+  email: string,
+): Promise<ApiResult<{ sent: boolean; expiresInSec: number }>> {
+  return call<{ sent: boolean; expiresInSec: number }>('/api/account', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'send-email-code', email }),
+  });
+}
+
 export async function logoutAccount(): Promise<ApiResult<{ loggedOut: boolean }>> {
   return call<{ loggedOut: boolean }>('/api/account', {
     method: 'POST',

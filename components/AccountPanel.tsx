@@ -14,7 +14,8 @@ import {
   loadAccount,
   loginAccount,
   logoutAccount,
-  registerAccount,
+  registerWithEmail,
+  sendEmailCode,
   type AccountInfo,
 } from '@/lib/account/client';
 import { clearUserProfiles, listUserProfiles } from '@/lib/ziwei/user-profiles';
@@ -29,12 +30,16 @@ export default function AccountPanel({ onAccountChange }: AccountPanelProps) {
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [mode, setMode] = useState<'login' | 'register'>('register');
   const [username, setUsername] = useState('');
+  const [emailCode, setEmailCode] = useState('');
+  const [countdown, setCountdown] = useState(0);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [nickname, setNickname] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(username.trim());
 
   // 计费（线上 BILLING_MODE=card 时启用；接口未开启返回 enabled:false，整个区块不渲染）
   interface BillingView { freeLimit: number; freeLeft: number; credits: number }
@@ -95,7 +100,7 @@ export default function AccountPanel({ onAccountChange }: AccountPanelProps) {
     setError('');
     setNotice('');
     if (!username.trim() || !password) {
-      setError('请输入账号与密码');
+      setError('请输入邮箱与密码');
       return;
     }
     setBusy(true);
@@ -103,8 +108,11 @@ export default function AccountPanel({ onAccountChange }: AccountPanelProps) {
       if (mode === 'register') {
         // 必须在切换命名空间之前读取并清除本机匿名档案
         const bind = listUserProfiles().map(p => ({ userId: p.userId, form: p.form }));
-        const result = await registerAccount({
-          username: username.trim(),
+        if (!emailOk) { setError('邮箱格式不正确'); return; }
+        if (!emailCode.trim()) { setError('请输入邮箱验证码'); return; }
+        const result = await registerWithEmail({
+          email: username.trim(),
+          code: emailCode.trim(),
           password,
           confirmPassword,
           nickname: nickname.trim() || undefined,
@@ -116,7 +124,7 @@ export default function AccountPanel({ onAccountChange }: AccountPanelProps) {
         clearUserProfiles();
         applyAccountScope(result.data.account.ownerId);
         publish(result.data.account);
-        setNotice(`注册成功，已将本机 ${result.data.bound} 条档案绑定到该账号`);
+        setNotice('注册成功，本机档案已绑定到该账号');
       } else {
         const result = await loginAccount({ username: username.trim(), password });
         if (!result.ok) {
@@ -129,10 +137,35 @@ export default function AccountPanel({ onAccountChange }: AccountPanelProps) {
       }
       setPassword('');
       setConfirmPassword('');
+      setEmailCode('');
     } finally {
       setBusy(false);
     }
   };
+
+  /** 发送邮箱验证码：60 秒倒计时内不可重发 */
+  const sendCode = async () => {
+    if (countdown > 0) return;
+    if (!emailOk) { setError('请先填写正确的邮箱地址'); return; }
+    setError('');
+    try {
+      const result = await sendEmailCode(username.trim());
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      setNotice('验证码已发送到邮箱，10 分钟内有效');
+      setCountdown(60);
+    } catch {
+      setError('网络异常，请稍后重试');
+    }
+  };
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const t = window.setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => window.clearTimeout(t);
+  }, [countdown]);
 
   const signOut = async () => {
     setBusy(true);
@@ -195,7 +228,7 @@ export default function AccountPanel({ onAccountChange }: AccountPanelProps) {
         <form onSubmit={submit}>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
             {(['register', 'login'] as const).map(m => (
-              <button key={m} type="button" onClick={() => { setMode(m); setError(''); }}
+              <button key={m} type="button" onClick={() => { setMode(m); setError(''); setNotice(''); }}
                 style={{ ...buttonStyle, flex: 1,
                   background: mode === m ? 'var(--ac-bg)' : 'transparent',
                   color: mode === m ? goldText : hintClr,
@@ -206,12 +239,29 @@ export default function AccountPanel({ onAccountChange }: AccountPanelProps) {
             ))}
           </div>
 
+          <label style={{ color: labelClr, fontSize: '11px', display: 'block', marginBottom: '8px' }}>
+            邮箱
+            <input style={{ ...inputStyle, marginTop: '4px' }} value={username}
+              onChange={e => setUsername(e.target.value)} placeholder="用于登录与接收验证码" autoComplete="username" />
+          </label>
+
+          {mode === 'register' && (
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+              <label style={{ color: labelClr, fontSize: '11px', flex: 1 }}>
+                邮箱验证码
+                <input style={{ ...inputStyle, marginTop: '4px' }} value={emailCode}
+                  onChange={e => setEmailCode(e.target.value)} placeholder="6 位数字" inputMode="numeric" />
+              </label>
+              <button type="button" onClick={sendCode} disabled={countdown > 0 || busy}
+                style={{ ...buttonStyle, alignSelf: 'flex-end', background: 'transparent',
+                  color: goldText, border: `1px solid ${border}`, padding: '9px 12px', fontSize: '12px',
+                  opacity: countdown > 0 ? 0.5 : 1 }}>
+                {countdown > 0 ? `${countdown}s 后重发` : '发送验证码'}
+              </button>
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-            <label style={{ color: labelClr, fontSize: '11px' }}>
-              账号
-              <input style={{ ...inputStyle, marginTop: '4px' }} value={username}
-                onChange={e => setUsername(e.target.value)} placeholder="2–32 位中英文 / 数字" autoComplete="username" />
-            </label>
             <label style={{ color: labelClr, fontSize: '11px' }}>
               昵称（可选）
               <input style={{ ...inputStyle, marginTop: '4px' }} value={nickname}

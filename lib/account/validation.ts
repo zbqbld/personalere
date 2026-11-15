@@ -12,7 +12,7 @@
  */
 import type { FieldIssue, LoginInput, RegisterInput } from './contract';
 
-const USERNAME_RE = /^[a-z0-9_.\-\u4e00-\u9fa5]{2,32}$/u;
+const USERNAME_RE = /^[a-z0-9_.\-\u4e00-\u9fa5@]{2,64}$/u;
 const NICKNAME_MAX = 32;
 const PBKDF2_ITERATIONS = 100000;
 const KEY_BITS = 256;
@@ -88,7 +88,7 @@ export function validateRegistration(input: RegisterInput): ValidationResult<Reg
   if (!username) {
     fields.push({ field: 'username', code: 'MISSING_USERNAME', message: '请输入注册账号' });
   } else if (!USERNAME_RE.test(username)) {
-    fields.push({ field: 'username', code: 'INVALID_USERNAME', message: '账号需为 2–32 位中英文、数字、下划线、点或横线' });
+    fields.push({ field: 'username', code: 'INVALID_USERNAME', message: '账号需为 2–64 位邮箱或中英文、数字、下划线、点、横线' });
   }
 
   const password = typeof input.password === 'string' ? input.password : '';

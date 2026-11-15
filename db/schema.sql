@@ -51,3 +51,14 @@ CREATE TABLE IF NOT EXISTS billing_usage (
   updated_at  INTEGER NOT NULL,
   PRIMARY KEY (subject, day)
 );
+
+-- ─── 邮箱验证码（邮箱注册用） ─────────────────────────────────
+-- 每个邮箱同时只保留一条有效验证码；验证失败累计 attempts，超限作废
+CREATE TABLE IF NOT EXISTS email_codes (
+  email       TEXT PRIMARY KEY,
+  code        TEXT NOT NULL,
+  purpose     TEXT NOT NULL DEFAULT 'register',
+  attempts    INTEGER NOT NULL DEFAULT 0,
+  expires_at  INTEGER NOT NULL,
+  created_at  INTEGER NOT NULL
+);
