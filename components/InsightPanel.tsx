@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ZiweiChart, Palace } from '@/lib/ziwei/types';
 import type { TimeView } from './TimeNav';
@@ -256,6 +256,22 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, cha
   const lastPalaceBranch = useRef<number | undefined>(undefined);
   const lastSiHuaKey = useRef<string | undefined>(undefined);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // ── 解读额度（计费开启时在输入栏上方显示；本地免登录模式 enabled:false 自动隐藏）──
+  const [quota, setQuota] = useState<{ freeLeft: number; credits: number } | null>(null);
+  const refreshQuota = useCallback(() => {
+    fetch('/api/billing')
+      .then(r => r.json())
+      .then(j => {
+        if (j?.ok && j?.data?.enabled) {
+          setQuota({ freeLeft: Number(j.data.freeLeft) || 0, credits: Number(j.data.credits) || 0 });
+        } else {
+          setQuota(null);
+        }
+      })
+      .catch(() => { /* 静默：额度显示失败不影响解读 */ });
+  }, []);
+  useEffect(() => { refreshQuota(); }, [refreshQuota]);
 
   // ── 长对话浏览 / 单轮删除（仅 UI 层，不改变消息与上下文契约）──
   /** 三档密度：舒适 / 紧凑 / 极简，默认紧凑 */
@@ -576,6 +592,7 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
     } finally {
       setLoading(false);
       loadingRef.current = false;
+      refreshQuota();
     }
   };
 
@@ -797,6 +814,13 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
 
       {/* ── 追问输入栏：显眼标题 + 快捷问题 + iOS 信息输入框 ── */}
       <div className="ios-compose">
+        {quota && (
+          <div className={`ios-quota${quota.freeLeft <= 0 && quota.credits <= 0 ? ' ios-quota-low' : ''}`}>
+            {quota.freeLeft > 0 ? `今日免费剩 ${quota.freeLeft} 次` : '今日免费已用完'}
+            <span className="ios-quota-sep">·</span>
+            {`卡密剩 ${quota.credits} 次`}
+          </div>
+        )}
         <div className="ios-compose-head">
           <span className="ios-compose-label">继续追问</span>
           <div className="ios-quick-list">

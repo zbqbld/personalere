@@ -1804,3 +1804,13 @@ button, a, input, select, textarea, .wb-card, .zw-memory-card {
   .zw-btn-primary:hover, .zw-page form > button[style]:hover { filter: brightness(1.07); }
 }
 .zw-btn-primary:active, .zw-page form > button[style]:active { filter: brightness(0.95); }
+
+/* ─── 解读面板额度条 ─────────────────────────────────────── */
+.ios-quota {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; letter-spacing: 0.02em;
+  color: var(--tx-3);
+  padding: 2px 2px 8px;
+}
+.ios-quota-low { color: var(--ji); font-weight: 600; }
+.ios-quota-sep { opacity: 0.5; }
