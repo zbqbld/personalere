@@ -9,26 +9,29 @@
   --font-mono: 'SF Mono', 'Menlo', 'Noto Sans Mono', 'Consolas', monospace;
 
   /* 系统背景层级（Light） */
-  --bg-0: #F2F2F7;
+  --bg-0: #F4F6FB;
   --bg-1: #FFFFFF;
-  --bg-2: #E5E5EA;
-  --bg-inv: #1C1C1E;
+  --bg-2: #E8EBF4;
+  --bg-inv: #131A2E;
   --bg-card: #FFFFFF;
-  --bg-page: #F2F2F7;
+  --bg-page: #F4F6FB;
 
   /* 标签色：二级/三级用加深后的实色，保证明暗双主题 WCAG AA */
-  --tx-0: #000000;
-  --tx-1: #1C1C1E;
-  --tx-2: #3C3C43;
-  --tx-3: #62626A;
+  --tx-0: #0B0F1E;
+  --tx-1: #1A2033;
+  --tx-2: #3A4258;
+  --tx-3: #67718C;
   --tx-inv: #FFFFFF;
-  --tx-inv2: #D1D1D6;
+  --tx-inv2: #D6DBEA;
+
+  /* 按钮前景：跟随强调色，金底配深字、靛底配白字 */
+  --btn-fg: #FFFFFF;
 
   /* tintColor：systemBlue */
-  --ac:     #007AFF;
-  --ac-dim: #0056B8;
-  --ac-bg:  rgba(0,122,255,0.10);
-  --ac-bdr: rgba(0,122,255,0.30);
+  --ac:     #A87F12;
+  --ac-dim: #7A5C08;
+  --ac-bg:  rgba(168,127,18,0.10);
+  --ac-bdr: rgba(168,127,18,0.32);
 
   /* 四化语义色（iOS 系统色加深以保证可读，仅用于命盘数据） */
   --lu:   #1E7B3C;
@@ -37,9 +40,9 @@
   --ji:   #C0392B;
 
   /* 分隔线 */
-  --bdr:      rgba(60,60,67,0.12);
-  --bdr-med:  rgba(60,60,67,0.20);
-  --bdr-heavy:rgba(60,60,67,0.30);
+  --bdr:      rgba(58,70,110,0.14);
+  --bdr-med:  rgba(58,70,110,0.22);
+  --bdr-heavy:rgba(58,70,110,0.32);
 
   /* 阴影：iOS 极轻层级 */
   --sh-xs: 0 1px 2px rgba(0,0,0,0.04);
@@ -53,12 +56,12 @@
   --t-surface:    #F2F2F7;
   --t-card:       #FFFFFF;
   --t-border:     rgba(60,60,67,0.16);
-  --t-border-acc: rgba(0,122,255,0.38);
+  --t-border-acc: rgba(168,127,18,0.40);
   --t-text:       #1C1C1E;
   --t-text1:      #1C1C1E;
   --t-text2:      #3C3C43;
   --t-faint:      #62626A;
-  --t-gold:       #0056B8;
+  --t-gold:       #8A6D1A;
   --t-purple:     #7A3FA8;
   --t-sky:        #005F94;
   --t-lu:   var(--lu);
@@ -77,22 +80,23 @@
 
 /* ─── 暗色模式 Token 覆盖（iOS Dark） ───────────────────── */
 [data-theme="dark"] {
-  --bg-0: #000000;
-  --bg-1: #1C1C1E;
-  --bg-2: #2C2C2E;
-  --bg-inv: #F2F2F7;
+  --bg-0: #070B16;
+  --bg-1: #10162A;
+  --bg-2: #1B2440;
+  --bg-inv: #F5F7FF;
 
-  --tx-0: #FFFFFF;
-  --tx-1: #F2F2F7;
-  --tx-2: #D1D1D6;
-  --tx-3: #AEAEB2;
-  --tx-inv: #1C1C1E;
-  --tx-inv2: #3C3C43;
+  --tx-0: #F5F7FF;
+  --tx-1: #EDF1FB;
+  --tx-2: #C2CBE2;
+  --tx-3: #8B96B3;
+  --tx-inv: #10162A;
+  --tx-inv2: #4A5578;
 
-  --ac:     #0A84FF;
-  --ac-dim: #7AB8FF;
-  --ac-bg:  rgba(10,132,255,0.16);
-  --ac-bdr: rgba(10,132,255,0.38);
+  --ac:     #E7C25C;
+  --ac-dim: #F0D48A;
+  --ac-bg:  rgba(231,194,90,0.13);
+  --ac-bdr: rgba(231,194,90,0.35);
+  --btn-fg: #171203;
 
   /* 四化语义色随主题提亮，保证深底上仍达 AA */
   --lu:   #5BD98B;
@@ -100,30 +104,30 @@
   --ke:   #EFC65A;
   --ji:   #FF8A80;
 
-  --bdr:      rgba(84,84,88,0.32);
-  --bdr-med:  rgba(84,84,88,0.48);
-  --bdr-heavy:rgba(84,84,88,0.65);
+  --bdr:      rgba(122,140,190,0.30);
+  --bdr-med:  rgba(122,140,190,0.46);
+  --bdr-heavy:rgba(122,140,190,0.62);
 
   --sh-xs: 0 1px 2px rgba(0,0,0,0.30);
   --sh-sm: 0 1px 3px rgba(0,0,0,0.40), 0 4px 12px rgba(0,0,0,0.30);
   --sh-md: 0 6px 20px rgba(0,0,0,0.50);
   --sh-lg: 0 16px 48px rgba(0,0,0,0.60);
 
-  --bg-card: #1C1C1E;
-  --bg-page: #000000;
+  --bg-card: #131A2E;
+  --bg-page: #080D1A;
 
   /* 命盘组件兼容层：暗色覆盖 */
-  --t-bg:         #1C1C1E;
-  --t-surface:    #2C2C2E;
-  --t-card:       #1C1C1E;
-  --t-border:     rgba(84,84,88,0.48);
-  --t-border-acc: rgba(10,132,255,0.50);
-  --t-text:       #F2F2F7;
-  --t-text1:      #F2F2F7;
-  --t-text2:      #D1D1D6;
-  --t-faint:      #AEAEB2;
-  --t-gold:       #7AB8FF;
-  --t-purple:     #DA8FFF;
+  --t-bg:         #10162A;
+  --t-surface:    #1B2440;
+  --t-card:       #131A2E;
+  --t-border:     rgba(122,140,190,0.42);
+  --t-border-acc: rgba(231,194,90,0.50);
+  --t-text:       #EDF1FB;
+  --t-text1:      #EDF1FB;
+  --t-text2:      #C2CBE2;
+  --t-faint:      #8B96B3;
+  --t-gold:       #EFCB6B;
+  --t-purple:     #CBA6FF;
   --t-sky:        #7FD0FF;
 }
 
@@ -818,10 +822,10 @@ button, input, select, textarea { font-family: var(--font); -webkit-tap-highligh
   -webkit-backdrop-filter: blur(20px) saturate(1.8) !important;
 }
 .zw-brand-mark {
-  background: linear-gradient(145deg, #3B9BFF, #007AFF) !important;
+  background: linear-gradient(145deg, #22306B, #0D1430) !important;
   color: #FFFFFF !important;
   border-radius: 9px !important;
-  box-shadow: 0 2px 6px rgba(0,122,255,0.28) !important;
+  box-shadow: 0 2px 6px rgba(168,127,18,0.28) !important;
 }
 .zw-brand-title { font-size: 16px !important; font-weight: 600 !important; letter-spacing: -0.01em !important; }
 .zw-pill {
@@ -843,8 +847,8 @@ button, input, select, textarea { font-family: var(--font); -webkit-tap-highligh
 .zw-btn-primary {
   background: var(--ac) !important;
   border-color: var(--ac) !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 2px 8px rgba(0,122,255,0.18);
+  color: var(--btn-fg) !important;
+  box-shadow: 0 2px 8px rgba(168,127,18,0.18);
 }
 .zw-btn-ghost, .zw-btn-quiet {
   background: var(--bg-card) !important;
@@ -925,8 +929,8 @@ button, input, select, textarea { font-family: var(--font); -webkit-tap-highligh
   font-weight: 600 !important;
   letter-spacing: 0 !important;
   background: var(--ac) !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 4px 14px rgba(0,122,255,0.20) !important;
+  color: var(--btn-fg) !important;
+  box-shadow: 0 4px 14px rgba(168,127,18,0.20) !important;
 }
 
 /* iOS 系统开关：所有复选框统一为 44×26 绿色开关 */
@@ -1052,7 +1056,7 @@ button, input, select, textarea { font-family: var(--font); -webkit-tap-highligh
 }
 .ios-bubble-user {
   background: var(--ac);
-  color: #FFFFFF;
+  color: var(--btn-fg);
   border-bottom-right-radius: 5px;
 }
 .ios-bubble-assistant {
@@ -1075,10 +1079,10 @@ button, input, select, textarea { font-family: var(--font); -webkit-tap-highligh
   width: 26px; height: 26px;
   display: grid; place-items: center;
   border-radius: 50%;
-  background: linear-gradient(145deg, #3B9BFF, #007AFF);
+  background: linear-gradient(145deg, #22306B, #0D1430);
   color: #FFFFFF;
   font-size: 12px;
-  box-shadow: 0 1px 3px rgba(0,122,255,0.24);
+  box-shadow: 0 1px 3px rgba(168,127,18,0.24);
 }
 .ios-empty-icon { font-size: 34px; margin-bottom: 10px; color: var(--ac); opacity: 0.25; }
 .ios-empty-text { font-size: 12px; color: var(--tx-2); margin: 0; }
@@ -1176,7 +1180,7 @@ button, input, select, textarea { font-family: var(--font); -webkit-tap-highligh
   background: var(--ac);
   color: #FFFFFF;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,122,255,0.26);
+  box-shadow: 0 2px 8px rgba(168,127,18,0.26);
   transition: opacity 0.15s ease, transform 0.12s ease;
 }
 .ios-send:hover { opacity: 0.88; }
@@ -1300,14 +1304,14 @@ button, input, select, textarea { font-family: var(--font); -webkit-tap-highligh
 }
 .ios-undo button {
   padding: 4px 12px; border-radius: 999px; border: none;
-  background: var(--ac); color: #FFFFFF;
+  background: var(--ac); color: var(--btn-fg);
   font-size: 12px; font-weight: 600; font-family: var(--font); cursor: pointer;
 }
 
 /* 新品牌图标：SVG 铺满 iOS 圆角容器 */
 .zw-brand-mark {
   background: transparent !important;
-  box-shadow: 0 2px 6px rgba(0,122,255,0.22) !important;
+  box-shadow: 0 2px 6px rgba(168,127,18,0.22) !important;
   border-radius: 9px !important;
   overflow: hidden; padding: 0 !important; line-height: 0;
 }
@@ -1433,7 +1437,7 @@ button, input, select, textarea { font-family: var(--font); -webkit-tap-highligh
 
 /* 对话区：微光气泡与青蓝头像 */
 .ios-bubble-user {
-  box-shadow: 0 2px 12px rgba(0,122,255,0.24), inset 0 0 0 0.5px rgba(255,255,255,0.16) !important;
+  box-shadow: 0 2px 12px rgba(168,127,18,0.24), inset 0 0 0 0.5px rgba(255,255,255,0.16) !important;
 }
 .ios-bubble-assistant { position: relative; }
 .ios-bubble-assistant::before {
@@ -1756,3 +1760,47 @@ a.wb-row-main:hover .wb-row-time { color: var(--tx-2); }
   .auth-scene { padding: 18px 12px 44px; }
   .auth-card { padding: 22px 16px 16px; }
 }
+
+/* ─── 星空金主题：登录场景覆盖 ─────────────────────────────── */
+.auth-stars, .auth-dial { color: var(--t-gold); }
+.auth-stars { opacity: 0.5; }
+[data-theme="dark"] .auth-stars { opacity: 0.7; }
+.auth-dial { opacity: 0.20; }
+[data-theme="dark"] .auth-dial { opacity: 0.34; }
+.auth-bg::before {
+  background:
+    radial-gradient(560px 420px at 16% 10%, rgba(59, 78, 192, 0.16), transparent 62%),
+    radial-gradient(640px 480px at 86% 18%, rgba(231, 194, 90, 0.14), transparent 62%),
+    radial-gradient(760px 560px at 50% 110%, rgba(122, 63, 168, 0.10), transparent 62%);
+}
+[data-theme="dark"] .auth-bg::before {
+  background:
+    radial-gradient(560px 420px at 16% 10%, rgba(90, 116, 235, 0.20), transparent 62%),
+    radial-gradient(640px 480px at 86% 18%, rgba(231, 194, 90, 0.12), transparent 62%),
+    radial-gradient(760px 560px at 50% 110%, rgba(203, 166, 255, 0.10), transparent 62%);
+}
+.auth-card {
+  background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+  backdrop-filter: blur(18px) saturate(1.6);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  border-color: var(--bdr-med);
+}
+.auth-brand h1 {
+  background: linear-gradient(120deg, var(--ac-dim), var(--ac));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 0.1em;
+}
+.auth-logo { border-radius: 14px; box-shadow: 0 6px 20px rgba(13, 20, 48, 0.35); }
+
+/* ─── 星空金主题：全局交互细节 ─────────────────────────────── */
+button, a, input, select, textarea, .wb-card, .zw-memory-card {
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease, box-shadow .18s ease, opacity .15s ease;
+}
+:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; border-radius: 4px; }
+@media (hover: hover) {
+  .wb-card:hover { box-shadow: var(--sh-md); }
+  .zw-btn-primary:hover, .zw-page form > button[style]:hover { filter: brightness(1.07); }
+}
+.zw-btn-primary:active, .zw-page form > button[style]:active { filter: brightness(0.95); }

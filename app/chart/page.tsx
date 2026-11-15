@@ -261,13 +261,19 @@ export default function ChartPage() {
           <Link href="/workbench" className="zw-brand" title="打开命盘工作台">
             <span className="zw-brand-mark" aria-hidden="true">
               <svg viewBox="0 0 64 64" width="30" height="30">
-                <rect width="64" height="64" rx="16" fill="#007AFF" />
-                <circle cx="32" cy="32" r="20" fill="none" stroke="#FFFFFF" strokeWidth="1.5" opacity="0.5" />
-                <circle cx="32" cy="32" r="12.5" fill="none" stroke="#FFFFFF" strokeWidth="1.2" opacity="0.32" />
-                <path d="M32 15 L34.5 27.5 L47 30 L34.5 32.5 L32 45 L29.5 32.5 L17 30 L29.5 27.5 Z" fill="#FFFFFF" />
-                <circle cx="32" cy="30" r="2.4" fill="#007AFF" />
-                <circle cx="47.5" cy="16.5" r="2.5" fill="#FFFFFF" opacity="0.95" />
-                <circle cx="16.5" cy="47.5" r="1.8" fill="#FFFFFF" opacity="0.7" />
+                <defs>
+                  <linearGradient id="zw-lg-top" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stopColor="#22306B" />
+                    <stop offset="1" stopColor="#0D1430" />
+                  </linearGradient>
+                </defs>
+                <rect width="64" height="64" rx="16" fill="url(#zw-lg-top)" />
+                <circle cx="32" cy="32" r="20" fill="none" stroke="#E7C25C" strokeWidth="1.5" opacity="0.55" />
+                <circle cx="32" cy="32" r="12.5" fill="none" stroke="#E7C25C" strokeWidth="1.2" opacity="0.35" />
+                <path d="M32 15 L34.5 27.5 L47 30 L34.5 32.5 L32 45 L29.5 32.5 L17 30 L29.5 27.5 Z" fill="#E7C25C" />
+                <circle cx="32" cy="30" r="2.4" fill="#0D1430" />
+                <circle cx="47.5" cy="16.5" r="2.5" fill="#F0D48A" opacity="0.95" />
+                <circle cx="16.5" cy="47.5" r="1.8" fill="#F0D48A" opacity="0.7" />
               </svg>
             </span>
             <div className="zw-brand-copy">
@@ -277,9 +283,11 @@ export default function ChartPage() {
 
           <div className="zw-top-actions">
             <Link href="/workbench" className="zw-wb-link">工作台</Link>
-            <span className={`zw-pill${memory ? '' : ' zw-pill-off'}`}>
-              {memory ? '已记住' : '未保存'}
-            </span>
+            {authState !== 'out' && (
+              <span className={`zw-pill${memory ? '' : ' zw-pill-off'}`}>
+                {memory ? '已记住' : '未保存'}
+              </span>
+            )}
 
             {chart && (
               <button type="button" className="zw-btn zw-btn-quiet" onClick={handleRestart}>
@@ -352,13 +360,19 @@ export default function ChartPage() {
             <div className="auth-brand">
               <span className="auth-logo" aria-hidden="true">
                 <svg viewBox="0 0 64 64" width="52" height="52">
-                  <rect width="64" height="64" rx="16" fill="#007AFF" />
-                  <circle cx="32" cy="32" r="20" fill="none" stroke="#FFFFFF" strokeWidth="1.5" opacity="0.5" />
-                  <circle cx="32" cy="32" r="12.5" fill="none" stroke="#FFFFFF" strokeWidth="1.2" opacity="0.32" />
-                  <path d="M32 15 L34.5 27.5 L47 30 L34.5 32.5 L32 45 L29.5 32.5 L17 30 L29.5 27.5 Z" fill="#FFFFFF" />
-                  <circle cx="32" cy="30" r="2.4" fill="#007AFF" />
-                  <circle cx="47.5" cy="16.5" r="2.5" fill="#FFFFFF" opacity="0.95" />
-                  <circle cx="16.5" cy="47.5" r="1.8" fill="#FFFFFF" opacity="0.7" />
+                  <defs>
+                    <linearGradient id="zw-lg-auth" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0" stopColor="#22306B" />
+                      <stop offset="1" stopColor="#0D1430" />
+                    </linearGradient>
+                  </defs>
+                  <rect width="64" height="64" rx="16" fill="url(#zw-lg-auth)" />
+                  <circle cx="32" cy="32" r="20" fill="none" stroke="#E7C25C" strokeWidth="1.5" opacity="0.55" />
+                  <circle cx="32" cy="32" r="12.5" fill="none" stroke="#E7C25C" strokeWidth="1.2" opacity="0.35" />
+                  <path d="M32 15 L34.5 27.5 L47 30 L34.5 32.5 L32 45 L29.5 32.5 L17 30 L29.5 27.5 Z" fill="#E7C25C" />
+                  <circle cx="32" cy="30" r="2.4" fill="#0D1430" />
+                  <circle cx="47.5" cy="16.5" r="2.5" fill="#F0D48A" opacity="0.95" />
+                  <circle cx="16.5" cy="47.5" r="1.8" fill="#F0D48A" opacity="0.7" />
                 </svg>
               </span>
               <h1>紫微命盘</h1>
