@@ -3,7 +3,7 @@
  *
  * 开关与额度全部来自服务端环境（wrangler vars / .env），不进客户端包：
  *   BILLING_MODE=card        启用卡密次数制；未设置或为其他值 = 完全关闭（现状）
- *   BILLING_FREE_DAILY=1     每主体每天免费解读次数（默认 1）
+ *   BILLING_FREE_DAILY=3     每主体每天免费解读次数（默认 3）
  *
  * 门禁策略（fail-open）：数据库不可用、识别不到主体时放行，
  * 避免基础设施抖动把全部用户的 AI 解读打死；滥用防护依赖账号体系。
@@ -20,7 +20,7 @@ export interface BillingRuntimeConfig {
 
 export function billingConfig(): BillingRuntimeConfig {
   const enabled = process.env.BILLING_MODE === 'card';
-  const raw = parseInt(process.env.BILLING_FREE_DAILY || '1', 10);
+  const raw = parseInt(process.env.BILLING_FREE_DAILY || '3', 10);
   const freeDaily = Number.isFinite(raw) ? Math.max(0, raw) : 3;
   return { enabled, freeDaily };
 }
