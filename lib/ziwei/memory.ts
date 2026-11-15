@@ -305,6 +305,57 @@ export interface ChatMemory {
   savedAt: number;
   /** 长期事实；旧数据无此字段时按空数组处理，保证向后兼容 */
   facts: LongTermFact[];
+  /** 生成这张命盘的排盘输入；旧数据无此字段时为 undefined（此时无法从工作台恢复命盘） */
+  birthInfo?: ChatBirthInfo;
+}
+
+/**
+ * 会话携带的最小排盘输入，结构与 lib/ziwei/types.ts 的 BirthInfo 兼容。
+ * 本文件被 scripts/smoke-dom.mjs 以 Node 原生 strip-types 直接加载，
+ * 无法解析无扩展名的外部导入，因此这里内联定义而不是 import。
+ * origInput / leapMonthPolicy 是排盘结果的附加字段，原样保留才能重建出同一张盘。
+ */
+export interface ChatBirthInfo {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  gender: 'male' | 'female';
+  name?: string;
+  province?: string;
+  city?: string;
+  longitude?: number;
+  origInput?: {
+    year: number;
+    month: number;
+    day: number;
+    clockHour: number;
+    clockMinute: number;
+  };
+  leapMonthPolicy?: unknown;
+}
+
+/** 严格校验会话里的排盘输入；核心字段非法返回 null（旧数据 / 伪造数据一律丢弃） */
+export function normalizeChatBirth(raw: unknown): ChatBirthInfo | null {
+  if (!isRecord(raw)) return null;
+  const { year, month, day, hour, gender } = raw;
+  if (typeof year !== 'number' || typeof month !== 'number' || typeof day !== 'number' || typeof hour !== 'number') return null;
+  if (gender !== 'male' && gender !== 'female') return null;
+  if (![year, month, day, hour].every(Number.isFinite)) return null;
+  if (year < 1900 || year > 2100) return null;
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour < 0 || hour > 11) return null;
+  // 整体浅拷贝以保留 origInput / leapMonthPolicy 等附加字段，再用已校验的核心字段覆盖
+  const out = { ...raw } as unknown as ChatBirthInfo;
+  out.year = year;
+  out.month = month;
+  out.day = day;
+  out.hour = hour;
+  out.gender = gender;
+  out.name = typeof raw.name === 'string' && raw.name ? raw.name : undefined;
+  out.province = typeof raw.province === 'string' && raw.province ? raw.province : undefined;
+  out.city = typeof raw.city === 'string' && raw.city ? raw.city : undefined;
+  out.longitude = typeof raw.longitude === 'number' && Number.isFinite(raw.longitude) ? raw.longitude : undefined;
+  return out;
 }
 
 /** 生成会话 id 所需的最小出生信息（兼容 BirthInfo 与表单草稿） */
@@ -425,6 +476,7 @@ export function loadChat(key: string, now: number = Date.now()): ChatMemory | nu
       messages,
       savedAt,
       facts: normalizeFacts(parsed.facts),
+      birthInfo: normalizeChatBirth(parsed.birthInfo) ?? undefined,
     };
   } catch {
     try { window.localStorage.removeItem(storageKey); } catch { /* ignore */ }
@@ -436,12 +488,15 @@ export function loadChat(key: string, now: number = Date.now()): ChatMemory | nu
  * 写入某张命盘的对话；失败（禁存储 / 配额满）返回 null，不影响使用。
  * facts 为可选第 4 参数：未传时自动读取已有事实并与当前消息合并后派生，
  * 因此既有 3 参数调用完全兼容，且即使调用方遗漏也不会丢失长期状态。
+ * birthInfo 为可选第 5 参数：写入后工作台「最近解读」才能一键恢复该命盘；
+ * 旧数据没有它也不影响读写，只是无法从工作台深链恢复。
  */
 export function saveChat(
   key: string,
   label: string,
   messages: ChatMessage[],
   facts?: LongTermFact[],
+  birthInfo?: ChatBirthInfo,
 ): ChatMemory | null {
   if (typeof window === 'undefined') return null;
   const normalized = normalizeChatMessages(messages);
@@ -455,6 +510,7 @@ export function saveChat(
     messages: trimmed,
     savedAt: Date.now(),
     facts: normalizeFacts(extractLongTermFacts(trimmed, previous)),
+    birthInfo: normalizeChatBirth(birthInfo) ?? undefined,
   };
   try {
     window.localStorage.setItem(chatStorageKey(key), JSON.stringify(entry));
@@ -468,6 +524,12 @@ export function saveChat(
 export function clearChat(key: string): void {
   if (typeof window === 'undefined') return;
   try { window.localStorage.removeItem(chatStorageKey(key)); } catch { /* ignore */ }
+}
+
+/** 按完整存储键删除一段对话（工作台列表用；键来自枚举，值可能缺 key 字段） */
+export function deleteChatByStorageKey(storageKey: string): void {
+  if (typeof window === 'undefined') return;
+  try { window.localStorage.removeItem(storageKey); } catch { /* ignore */ }
 }
 
 /** 清除全部命盘的对话（不影响主题偏好等其他键） */

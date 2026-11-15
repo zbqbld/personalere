@@ -326,10 +326,10 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, cha
     }
     if (messages.length === 0) return;
     const t = window.setTimeout(() => {
-      saveChat(chatKey, chatLabel, messages, factsRef.current);
+      saveChat(chatKey, chatLabel, messages, factsRef.current, chart.birthInfo);
     }, loading ? 800 : 250);
     return () => window.clearTimeout(t);
-  }, [messages, loading, chatKey, chatLabel, chatReady, rememberChat]);
+  }, [messages, loading, chatKey, chatLabel, chatReady, rememberChat, chart.birthInfo]);
 
   // 关闭「记住对话」时立即删除本机这份会话（不影响屏幕上的内容）
   useEffect(() => {
@@ -417,7 +417,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, cha
       setRestored(null);
       setChatCleared(true);
     } else {
-      saveChat(chatKey, chatLabel, next, nextFacts);
+      saveChat(chatKey, chatLabel, next, nextFacts, chart.birthInfo);
       setChatCleared(false);
     }
   };
@@ -427,7 +427,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, cha
     messagesRef.current = undoSnapshot.messages;
     factsRef.current = undoSnapshot.facts;
     setMessages(undoSnapshot.messages);
-    saveChat(chatKey, chatLabel, undoSnapshot.messages, undoSnapshot.facts);
+    saveChat(chatKey, chatLabel, undoSnapshot.messages, undoSnapshot.facts, chart.birthInfo);
     setRestored({ count: undoSnapshot.messages.length, savedAt: Date.now() });
     setChatCleared(false);
     setUndoSnapshot(null);

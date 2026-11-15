@@ -1627,6 +1627,17 @@ button, input, select, textarea { font-family: var(--font); -webkit-tap-highligh
 .wb-row-copy strong { font-size: 13px; font-weight: 600; color: var(--tx-0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wb-row-copy span { font-size: 11px; color: var(--tx-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wb-row-time { flex: none; font-size: 11px; color: var(--tx-3); }
+/* 最近解读：可点击行 + 删除按钮 */
+.wb-row-action { gap: 8px; }
+.wb-row-main { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; color: inherit; text-decoration: none; border-radius: 8px; }
+a.wb-row-main { cursor: pointer; }
+a.wb-row-main:hover strong { color: var(--ac); }
+a.wb-row-main:hover .wb-row-time { color: var(--tx-2); }
+.wb-row-main-static { cursor: default; }
+.wb-row-del { flex: none; border: 1px solid var(--bdr); background: transparent; color: var(--tx-3); font-size: 11px; line-height: 1; padding: 5px 8px; border-radius: 7px; cursor: pointer; }
+.wb-row-del:hover { color: var(--tx-1); border-color: var(--tx-3); }
+.wb-row-del-arm { color: #fff; background: #ff3b30; border-color: #ff3b30; }
+.wb-row-del-arm:hover { color: #fff; border-color: #ff3b30; }
 .wb-empty { margin: 0; padding: 18px 4px; font-size: 12px; color: var(--tx-3); line-height: 1.7; }
 
 .wb-tips { margin-top: 18px; padding: 18px; border-radius: var(--r-lg); border: 0.5px solid var(--bdr); background: var(--bg-card); box-shadow: var(--sh-sm); }

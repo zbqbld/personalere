@@ -17,6 +17,8 @@ import {
   describeBirthDraft,
   formatSavedAt,
   countChats,
+  deleteChatByStorageKey,
+  normalizeChatBirth,
   type ChatMemory,
   type LastBirthMemory,
 } from '@/lib/ziwei/memory';
@@ -25,9 +27,15 @@ import { applyAccountScope, loadAccount, type AccountInfo } from '@/lib/account/
 import { ACCOUNT_ENABLED } from '@/lib/account/feature';
 
 interface RecentChat {
+  /** localStorage 完整键名，删除时直接使用 */
+  storageKey: string;
+  /** 会话哈希，用于跳转 /chart?chat=<key> 恢复命盘与对话 */
+  chatKey: string;
   label: string;
   savedAt: number;
   messages: number;
+  /** 有排盘输入才能「继续追问」；旧数据没有时只能删除 */
+  canResume: boolean;
 }
 
 /** 按当前账号命名空间读取最近解读会话，不改动任何数据 */
@@ -44,9 +52,13 @@ function readRecentChats(): RecentChat[] {
       const mem = JSON.parse(raw) as ChatMemory;
       if (!mem || !Array.isArray(mem.messages)) continue;
       out.push({
+        storageKey: key,
+        // 旧数据可能缺 key 字段：从完整键名剥掉前缀兜底
+        chatKey: typeof mem.key === 'string' && mem.key ? mem.key : key.slice(prefix.length),
         label: mem.label || '命理解读',
         savedAt: typeof mem.savedAt === 'number' ? mem.savedAt : 0,
         messages: mem.messages.length,
+        canResume: normalizeChatBirth(mem.birthInfo) !== null,
       });
     }
   } catch { /* 损坏数据跳过 */ }
@@ -77,6 +89,8 @@ export default function WorkbenchPage() {
   const [lastBirth, setLastBirth] = useState<LastBirthMemory | null>(null);
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [today, setToday] = useState('');
+  /** 待二次确认删除的会话完整键名；null 表示没有处于确认状态 */
+  const [confirmDeleteKey, setConfirmDeleteKey] = useState<string | null>(null);
 
   useEffect(() => {
     // 日期放在客户端计算，避免服务端与浏览器时区不同造成水合不一致
@@ -110,6 +124,18 @@ export default function WorkbenchPage() {
       readLocalData();
     });
   }, []);
+
+  /** 删除一段解读会话：第一次点击进入确认态，再点才真正删除（防误删） */
+  const handleDeleteChat = (c: RecentChat) => {
+    if (confirmDeleteKey !== c.storageKey) {
+      setConfirmDeleteKey(c.storageKey);
+      return;
+    }
+    deleteChatByStorageKey(c.storageKey);
+    setConfirmDeleteKey(null);
+    setChats(readRecentChats());
+    setChatCount(countChats());
+  };
 
   return (
     <div className="wb-page">
@@ -235,14 +261,39 @@ export default function WorkbenchPage() {
                 <p className="wb-empty">暂无解读记录。打开命盘后，解读对话会按命盘自动保存。</p>
               ) : (
                 <ul className="wb-list">
-                  {chats.map((c, i) => (
-                    <li key={`${c.label}-${i}`} className="wb-row">
-                      <span className="wb-row-dot wb-row-dot-alt" />
-                      <span className="wb-row-copy">
-                        <strong>{c.label}</strong>
-                        <span>{c.messages} 条对话</span>
-                      </span>
-                      <span className="wb-row-time">{formatSavedAt(c.savedAt)}</span>
+                  {chats.map((c) => (
+                    <li key={c.storageKey} className="wb-row wb-row-action">
+                      {c.canResume ? (
+                        <Link
+                          href={`/chart?chat=${encodeURIComponent(c.chatKey)}`}
+                          className="wb-row-main"
+                          title="打开这张命盘并继续追问"
+                        >
+                          <span className="wb-row-dot wb-row-dot-alt" />
+                          <span className="wb-row-copy">
+                            <strong>{c.label}</strong>
+                            <span>{c.messages} 条对话 · 点击继续追问</span>
+                          </span>
+                          <span className="wb-row-time">{formatSavedAt(c.savedAt)}</span>
+                        </Link>
+                      ) : (
+                        <span className="wb-row-main wb-row-main-static" title="旧数据缺少生辰，无法一键恢复，可删除">
+                          <span className="wb-row-dot wb-row-dot-alt" />
+                          <span className="wb-row-copy">
+                            <strong>{c.label}</strong>
+                            <span>{c.messages} 条对话 · 旧数据不可恢复</span>
+                          </span>
+                          <span className="wb-row-time">{formatSavedAt(c.savedAt)}</span>
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        className={confirmDeleteKey === c.storageKey ? 'wb-row-del wb-row-del-arm' : 'wb-row-del'}
+                        onClick={() => handleDeleteChat(c)}
+                        title={confirmDeleteKey === c.storageKey ? '再点一次确认删除' : '删除这段解读对话'}
+                      >
+                        {confirmDeleteKey === c.storageKey ? '确认删除' : '删除'}
+                      </button>
                     </li>
                   ))}
                 </ul>

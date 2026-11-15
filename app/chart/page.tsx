@@ -13,13 +13,14 @@ import {
   clearAllMemory,
   describeBirthDraft,
   formatSavedAt,
+  loadChat,
   type LastBirthMemory,
 } from '@/lib/ziwei/memory';
 import { saveUserProfiles } from '@/lib/ziwei/user-profiles';
 import AccountPanel from '@/components/AccountPanel';
 import { applyAccountScope, clearAccountProfiles, saveAccountProfiles } from '@/lib/account/client';
 import { ACCOUNT_ENABLED } from '@/lib/account/feature';
-import type { ZiweiChart, Palace } from '@/lib/ziwei/types';
+import type { ZiweiChart, Palace, BirthInfo } from '@/lib/ziwei/types';
 
 /**
  * 命盘页
@@ -65,11 +66,37 @@ export default function ChartPage() {
     }
   }, []);
 
+  const buildFromBirthInfo = useCallback((birthInfo: BirthInfo): ZiweiChart | null => {
+    try {
+      return generateChart(birthInfo);
+    } catch {
+      return null;
+    }
+  }, []);
+
   // ── 挂载时恢复：只用本地数据，不访问网络 ──────────────────
   useEffect(() => {
     // 本地免注册模式：若之前登录过，先把残留的账号命名空间清掉，
     // 否则会读到旧账号下的键，看起来像「还有账号」。
     if (!ACCOUNT_ENABLED) applyAccountScope(null);
+
+    // 工作台「最近解读 → 继续追问」深链：/chart?chat=<会话key>
+    // 会话里存有排盘输入，直接重建命盘；InsightPanel 会按同一 key 自动接上对话。
+    let chatParam: string | null = null;
+    try { chatParam = new URLSearchParams(window.location.search).get('chat'); } catch { /* ignore */ }
+    if (chatParam) {
+      const mem = loadChat(chatParam);
+      const restored = mem?.birthInfo ? buildFromBirthInfo(mem.birthInfo) : null;
+      if (restored) {
+        setChart(restored);
+        setAutoRestored(true);
+        setHydrated(true);
+        // 清掉查询参数：刷新后回到常规「沿用上次信息」流程，避免一直钉在这条旧会话上
+        try { window.history.replaceState(null, '', '/chart'); } catch { /* ignore */ }
+        return;
+      }
+    }
+
     const mem = loadLastBirth();
     setMemory(mem);
     setFormSeed(mem?.form);
@@ -83,7 +110,7 @@ export default function ChartPage() {
       setFormKey(k => k + 1);
     }
     setHydrated(true);
-  }, [buildFrom]);
+  }, [buildFrom, buildFromBirthInfo]);
 
   useEffect(() => {
     if (!toast) return;
