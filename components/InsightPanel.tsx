@@ -190,6 +190,38 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, cha
 
   // ── 解读额度（计费开启时在输入栏上方显示；本地免登录模式 enabled:false 自动隐藏）──
   const [quota, setQuota] = useState<{ freeLeft: number; credits: number } | null>(null);
+  // 就地兑换卡密：额度条旁「兑换」按钮展开输入框，不必切回账号面板
+  const [showRedeem, setShowRedeem] = useState(false);
+  const [redeemCode, setRedeemCode] = useState('');
+  const [redeemBusy, setRedeemBusy] = useState(false);
+  const [redeemMsg, setRedeemMsg] = useState('');
+
+  const redeemCard = async () => {
+    const code = redeemCode.trim();
+    if (!code || redeemBusy) return;
+    setRedeemBusy(true);
+    setRedeemMsg('');
+    try {
+      const res = await fetch('/api/billing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'redeem', code }),
+      });
+      const j = await res.json().catch(() => null);
+      if (j?.ok) {
+        setRedeemMsg(`兑换成功，已加 ${j.data.added} 次`);
+        setRedeemCode('');
+        refreshQuota();
+      } else {
+        setRedeemMsg(j?.message || '兑换失败，请稍后重试');
+      }
+    } catch {
+      setRedeemMsg('网络异常，请稍后重试');
+    } finally {
+      setRedeemBusy(false);
+    }
+  };
+
   const refreshQuota = useCallback(() => {
     fetch('/api/billing')
       .then(r => r.json())
@@ -770,10 +802,30 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
       {/* ── 追问输入栏：显眼标题 + 快捷问题 + iOS 信息输入框 ── */}
       <div className="ios-compose">
         {quota && (
-          <div className={`ios-quota${quota.freeLeft <= 0 && quota.credits <= 0 ? ' ios-quota-low' : ''}`}>
-            {quota.freeLeft > 0 ? `免费剩 ${quota.freeLeft} 次` : '免费次数已用完'}
-            <span className="ios-quota-sep">·</span>
-            {`卡密剩 ${quota.credits} 次`}
+          <div className={`ios-quota-wrap${quota.freeLeft <= 0 && quota.credits <= 0 ? ' ios-quota-wrap-low' : ''}`}>
+            <div className={`ios-quota${quota.freeLeft <= 0 && quota.credits <= 0 ? ' ios-quota-low' : ''}`}>
+              {quota.freeLeft > 0 ? `免费剩 ${quota.freeLeft} 次` : '免费次数已用完'}
+              <span className="ios-quota-sep">·</span>
+              {`卡密剩 ${quota.credits} 次`}
+              <button type="button" className="ios-quota-redeem" onClick={() => { setShowRedeem(v => !v); setRedeemMsg(''); }}>
+                {showRedeem ? '收起' : '兑换卡密'}
+              </button>
+            </div>
+            {showRedeem && (
+              <div className="ios-redeem-box">
+                <input
+                  value={redeemCode}
+                  onChange={e => setRedeemCode(e.target.value)}
+                  placeholder="输入卡密 ZW-XXXX-XXXX-XXXX"
+                  disabled={redeemBusy}
+                  onKeyDown={e => { if (e.key === 'Enter') redeemCard(); }}
+                />
+                <button type="button" onClick={redeemCard} disabled={redeemBusy || !redeemCode.trim()}>
+                  {redeemBusy ? '兑换中…' : '兑换'}
+                </button>
+                {redeemMsg && <p className={redeemMsg.startsWith('兑换成功') ? 'ok' : 'err'}>{redeemMsg}</p>}
+              </div>
+            )}
           </div>
         )}
         <div className="ios-compose-head">

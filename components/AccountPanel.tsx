@@ -337,7 +337,7 @@ export default function AccountPanel({ onAccountChange, embedded = false }: Acco
             </p>
           )}
           <p style={{ color: hintClr, fontSize: '11px', margin: '6px 0 0' }}>
-            每次 AI 解读 / 合盘分析消耗 1 次：先用当日免费额度，用完自动扣卡密次数。
+            每次 AI 解读 / 合盘分析消耗 1 次：先用完累计 3 次免费额度，之后自动扣卡密次数。
             次数不足时向维护者购买卡密，在上方输入即可到账。
           </p>
         </div>
