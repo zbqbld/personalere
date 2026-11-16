@@ -379,7 +379,7 @@ export default function ChartPage() {
               <p>AI 深度解读 · 十四主星 × 十二宫位</p>
             </div>
             <AccountPanel embedded onAccountChange={handleAccountChange} />
-            <p className="auth-foot">新用户每天 1 次免费解读；注册后数据仅本人可见，换设备登录仍可使用。</p>
+            <p className="auth-foot">新用户 3 次免费解读。</p>
           </div>
         </div>
       ) : chart ? (
