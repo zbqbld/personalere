@@ -12,6 +12,7 @@ import { bindOwnedProfiles, currentAccount, login, logout, register } from '@/li
 import { normalizeUsername } from '@/lib/account/validation';
 import { createEmailCodeStore, EMAIL_CODE_TTL_MS } from '@/lib/account/email-codes';
 import { sendEmail, emailConfig } from '@/lib/email/brevo';
+import { getStorage } from '@/lib/account/storage';
 import type { D1Like } from '@/lib/billing/core';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -112,8 +113,7 @@ export async function POST(req: NextRequest) {
     if (!db) return fail('STORAGE_UNAVAILABLE', '存储不可用，请稍后重试', 503);
     const email = normalizeUsername(body.email);
     if (!EMAIL_RE.test(email)) return fail('INVALID_EMAIL', '邮箱格式不正确');
-    const storage = (await import('@/lib/account/storage')).getStorage;
-    const account = await (await storage()).getAccount(email);
+    const account = await (await getStorage()).getAccount(email);
     if (account) return fail('ACCOUNT_EXISTS', '该邮箱已注册，请直接登录', 409);
 
     const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0');
