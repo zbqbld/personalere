@@ -1080,7 +1080,7 @@ button, input, select, textarea { font-family: var(--font); -webkit-tap-highligh
   display: grid; place-items: center;
   border-radius: 50%;
   background: linear-gradient(145deg, #22306B, #0D1430);
-  color: #FFFFFF;
+  color: #E7C25C;
   font-size: 12px;
   box-shadow: 0 1px 3px rgba(168,127,18,0.24);
 }
@@ -1814,3 +1814,33 @@ button, a, input, select, textarea, .wb-card, .zw-memory-card {
 }
 .ios-quota-low { color: var(--ji); font-weight: 600; }
 .ios-quota-sep { opacity: 0.5; }
+
+/* ─── iMessage 气泡细节：时间戳 / 打字中 / 质感 ───────────── */
+.ios-time {
+  flex: none;
+  font-size: 10px;
+  color: var(--tx-3);
+  opacity: 0.75;
+  margin-bottom: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.ios-bubble-user {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--ac) 86%, #ffffff), var(--ac));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.10);
+}
+.ios-bubble-assistant { box-shadow: var(--sh-xs); }
+.ios-typing { display: inline-flex; gap: 4px; padding: 3px 0; }
+.ios-typing i {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--tx-3); opacity: 0.4;
+  animation: ios-typing-b 1.2s ease-in-out infinite;
+}
+.ios-typing i:nth-child(2) { animation-delay: 0.2s; }
+.ios-typing i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes ios-typing-b {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ios-typing i { animation: none; }
+}

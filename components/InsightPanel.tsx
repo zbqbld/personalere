@@ -192,6 +192,11 @@ function InlineText({ text }: { text: string }) {
  * AI 解读 Markdown 渲染：# 标题、## 小节、- 列表、1. 列表、--- 分隔线、
  * **【章节】**、> 引用与正文各自成块，不再把标记符号原样显示。
  */
+/** 气泡时间戳：iMessage 风格的两位小时制 */
+function fmtTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
 function AiContent({ text, streaming }: { text: string; streaming?: boolean }) {
   const lines = useMemo(() => parseAiText(text), [text]);
   return (
@@ -752,6 +757,9 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
               : assistantText;
             const streaming = loading && turn.start === lastTurnStart && (!isLong || expanded);
             const confirming = pendingDelete === turn.start;
+            // iMessage 特征：本轮 AI 气泡尚未产出文字时显示「打字中」三点动画
+            const typing = loading && turn.start === lastTurnStart && assistantText.trim() === '';
+            const showAssistant = Boolean(assistantText.trim()) || typing;
 
             return (
               <motion.div
@@ -761,18 +769,23 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
                 className="ios-turn"
               >
                 {turn.user && !turn.user.hidden && (
-                  <div className="flex justify-end">
+                  <div className="flex justify-end items-end gap-1.5">
+                    {typeof turn.user.ts === 'number' && (
+                      <span className="ios-time" aria-hidden="true">{fmtTime(turn.user.ts)}</span>
+                    )}
                     <div className="ios-bubble ios-bubble-user">{turn.user.content}</div>
                   </div>
                 )}
 
-                {assistantText.trim() && (
+                {showAssistant && (
                   <div className="flex justify-start items-end gap-2">
                     <span className="ios-avatar" aria-hidden="true">✦</span>
                     <div className="ios-bubble ios-bubble-assistant">
-                      <div className="ios-bubble-name">命理解读</div>
-                      <AiContent text={shownText} streaming={streaming} />
-                      {isLong && (
+                      {turn.assistant && <div className="ios-bubble-name">命理解读</div>}
+                      {typing
+                        ? <div className="ios-typing" aria-label="命理解读生成中"><i /><i /><i /></div>
+                        : <AiContent text={shownText} streaming={streaming} />}
+                      {!typing && isLong && (
                         <button type="button" className="ios-expand" onClick={() => toggleExpanded(turn.start)}>
                           {expanded ? '收起' : `展开全文（还有 ${assistantText.length - LONG_PREVIEW_CHARS} 字）`}
                         </button>
