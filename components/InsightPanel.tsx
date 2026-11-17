@@ -497,6 +497,9 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
   const streamResponse = async (apiMessages: ApiMessage[]) => {
     // 面向用户的失败文案：HTTP 错误（尤其 402）在这里定制，流中断时保持通用提示
     let failureMessage = '解读失败，请稍后重试。';
+    // 流文本提到 try 外：中途异常时也要把已生成内容保留下来，不让用户白等
+    let assistantText = '';
+    let streamStarted = false;
     try {
       const res = await fetch('/api/interpret', {
         method: 'POST',
@@ -522,16 +525,20 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let assistantText = '';
+      streamStarted = true;
+      // 网络块边界 ≠ SSE 行边界：必须跨块缓冲，否则半行 JSON 会被丢弃，造成解读内容缺失
+      let sseBuffer = '';
+      let streamInterrupted = false;
 
       setMessages(prev => [...prev, { role: 'assistant', content: '', ts: Date.now() }]);
 
       // ── 流式渲染节流 ──
       // 每个 SSE chunk 都 setMessages 会让整个消息列表跟随重渲染（长回复数百次）。
-      // 改为：文本先累积进 ref，用 requestAnimationFrame 合帧后每帧最多刷一次。
-      let rafId: number | null = null;
+      // 用 100ms 定时器合帧：后台标签页定时器仍会触发（rAF 在后台会暂停，
+      // 曾导致切回前台前一直不刷新，看起来像卡死）。
+      let flushTimer: ReturnType<typeof setTimeout> | null = null;
       const flushStreamText = () => {
-        rafId = null;
+        if (flushTimer !== null) { clearTimeout(flushTimer); flushTimer = null; }
         setMessages(prev => {
           const updated = [...prev];
           const last = updated[updated.length - 1];
@@ -541,33 +548,70 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
         });
       };
       const scheduleStreamFlush = () => {
-        if (rafId !== null) return;
-        rafId = window.requestAnimationFrame(flushStreamText);
+        if (flushTimer !== null) return;
+        flushTimer = setTimeout(flushStreamText, 100);
       };
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
-          if (!line.startsWith('data: ')) continue;
-          const data = line.slice(6);
-          if (data === '[DONE]') break;
-          try {
-            const delta = JSON.parse(data).delta?.text ?? '';
-            assistantText += delta;
-            scheduleStreamFlush();
-          } catch { /* skip */ }
+      /** 处理一行 SSE data；返回是否收到 [DONE] */
+      const handleSseLine = (raw: string): boolean => {
+        if (raw.startsWith(':')) return false;            // 保活注释
+        if (!raw.startsWith('data:')) return false;
+        const data = raw.slice(5).trim();
+        if (data === '[DONE]') return true;
+        try {
+          const json = JSON.parse(data);
+          if (json?.error) {
+            streamInterrupted = true;
+            return false;
+          }
+          const delta = json?.delta?.text ?? '';
+          if (delta) { assistantText += delta; scheduleStreamFlush(); }
+        } catch { /* 半行已在 buffer 中等待，这里只处理完整行 */ }
+        return false;
+      };
+
+      let done = false;
+      while (!done) {
+        const { done: finished, value } = await reader.read();
+        if (finished) break;
+        sseBuffer += decoder.decode(value, { stream: true });
+        let nl: number;
+        while ((nl = sseBuffer.indexOf('\n')) >= 0) {
+          const line = sseBuffer.slice(0, nl).trim();
+          sseBuffer = sseBuffer.slice(nl + 1);
+          if (handleSseLine(line)) { done = true; break; }
         }
       }
-      if (rafId !== null) {
-        window.cancelAnimationFrame(rafId);
-        rafId = null;
-      }
+      // 收尾：处理尾部可能残留的最后一行（没有换行符结尾的情况）
+      if (!done && sseBuffer.trim()) handleSseLine(sseBuffer.trim());
       flushStreamText();
+      // 流异常中断但已产出部分内容：明确标记，让用户能从已有内容继续，而不是静默当作完成
+      if (streamInterrupted && assistantText.trim()) {
+        setMessages(prev => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last?.role === 'assistant') {
+            updated[updated.length - 1] = { ...last, content: assistantText + '\n\n（本次解读中断，可点下方「继续追问」接着问）' };
+          }
+          return updated;
+        });
+      }
     } catch (e) {
       const missing = e instanceof Error && e.message === 'api-missing';
-      setMessages(prev => [...prev, { role: 'assistant', content: missing ? '开源版不含 AI 解读接口（/api/interpret），需要你自己实现后才能用，详见 README「快速开始」。排盘本身不需要任何 API Key。' : failureMessage, ts: Date.now() }]);
+      if (streamStarted && assistantText.trim()) {
+        // 流已开始但中途断开：保留已生成内容，追加中断说明，不新建一条空失败消息
+        setMessages(prev => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last?.role === 'assistant') {
+            updated[updated.length - 1] = { ...last, content: assistantText + '\n\n（连接中断，以上为已完成部分。可点下方「继续追问」接着问。）' };
+            return updated;
+          }
+          return [...prev, { role: 'assistant', content: assistantText + '\n\n（连接中断，以上为已完成部分。）', ts: Date.now() }];
+        });
+      } else {
+        setMessages(prev => [...prev, { role: 'assistant', content: missing ? '开源版不含 AI 解读接口（/api/interpret），需要你自己实现后才能用，详见 README「快速开始」。排盘本身不需要任何 API Key。' : failureMessage, ts: Date.now() }]);
+      }
     } finally {
       setLoading(false);
       loadingRef.current = false;

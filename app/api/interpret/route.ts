@@ -133,7 +133,9 @@ export async function POST(req: NextRequest) {
           }
         }
         push('data: [DONE]\n');
-      } catch {
+      } catch (e) {
+        // 上游异常必须显式告知前端，否则静默 [DONE] 会让用户拿到半截内容却以为解读完成
+        push(`data: ${JSON.stringify({ error: 'upstream_interrupted', message: (e as Error)?.message || '上游连接中断' })}\n`);
         push('data: [DONE]\n');
       } finally {
         controller.close();
