@@ -1882,3 +1882,16 @@ button, a, input, select, textarea, .wb-card, .zw-memory-card {
 .ios-redeem-box p { width: 100%; margin: 2px 0 0; font-size: 11px; }
 .ios-redeem-box p.ok { color: var(--lu); }
 .ios-redeem-box p.err { color: var(--ji); }
+
+/* ─── 对话稳定性：重试 / 排队提示 ─────────────────────────── */
+.ios-turn-retry {
+  padding: 2px 10px; border-radius: 999px;
+  border: 1px solid var(--ac-bdr);
+  background: var(--ac-bg); color: var(--ac-dim);
+  font-size: 11px; font-weight: 600; cursor: pointer;
+}
+.ios-turn-retry:hover { background: var(--ac); color: var(--btn-fg); }
+.ios-pending-auto {
+  font-size: 11px; color: var(--gold);
+  padding: 4px 2px 6px;
+}

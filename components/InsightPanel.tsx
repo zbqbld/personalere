@@ -195,6 +195,13 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, cha
   const [redeemCode, setRedeemCode] = useState('');
   const [redeemBusy, setRedeemBusy] = useState(false);
   const [redeemMsg, setRedeemMsg] = useState('');
+  // 失败重试：只保留最后一次失败的请求参数，不写进消息历史（避免污染上下文与持久化）
+  const [retryInfo, setRetryInfo] = useState<{ apiMessages: ApiMessage[] } | null>(null);
+  // 自动提问（宫位/四化）在上一条生成中到达时排队，完成后自动续发，避免静默丢弃
+  const pendingAutoRef = useRef<string[]>([]);
+  const [pendingAutoCount, setPendingAutoCount] = useState(0);
+  // 手动提问被 loading 拦下时的临时提示（不进消息历史，不污染上下文）
+  const [busyHint, setBusyHint] = useState('');
 
   const redeemCard = async () => {
     const code = redeemCode.trim();
@@ -309,6 +316,24 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, cha
     }, loading ? 800 : 250);
     return () => window.clearTimeout(t);
   }, [messages, loading, chatKey, chatLabel, chatReady, rememberChat, chart.birthInfo]);
+
+  // 切页 / 关页时强制落盘：防抖定时器在页面卸载时会被取消，
+  // 这里用 pagehide 同步写入，避免正在生成或刚结束的解读丢失。
+  useEffect(() => {
+    if (!chatReady || !rememberChat) return;
+    const flush = () => {
+      const cur = messagesRef.current;
+      if (cur.length > 0) saveChat(chatKey, chatLabel, cur, factsRef.current, chart.birthInfo);
+    };
+    window.addEventListener('pagehide', flush);
+    // visibilitychange：手机切后台同样触发，尽早落盘
+    const onHide = () => { if (document.visibilityState === 'hidden') flush(); };
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onHide);
+    };
+  }, [chatReady, rememberChat, chatKey, chatLabel, chart.birthInfo]);
 
   // 关闭「记住对话」时立即删除本机这份会话（不影响屏幕上的内容）
   useEffect(() => {
@@ -497,14 +522,19 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
   const streamResponse = async (apiMessages: ApiMessage[]) => {
     // 面向用户的失败文案：HTTP 错误（尤其 402）在这里定制，流中断时保持通用提示
     let failureMessage = '解读失败，请稍后重试。';
+    setRetryInfo(null);
     // 流文本提到 try 外：中途异常时也要把已生成内容保留下来，不让用户白等
     let assistantText = '';
     let streamStarted = false;
+    // 请求超时：上游长时间无响应时主动中断，避免永久卡在「生成中」
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 180000);
     try {
       const res = await fetch('/api/interpret', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chart, messages: apiMessages }),
+        signal: controller.signal,
       });
       if (res.status === 404) throw new Error('api-missing');
       if (!res.ok) {
@@ -514,7 +544,7 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
             const credits = Number(err?.data?.credits) || 0;
             failureMessage = credits > 0
               ? `免费次数已用完，但剩余的 ${credits} 次卡密次数没能扣减成功，请联系维护者。`
-              : '今日 1 次免费解读已用完。请在「账号与数据归属」面板的「解读额度」处输入卡密兑换，兑换后即可继续解读。';
+              : '累计 3 次免费解读已用完。请在「解读额度」处点「兑换卡密」输入卡密，兑换后即可继续解读。';
           } else if (err?.message) {
             failureMessage = String(err.message);
           }
@@ -591,36 +621,64 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
           const updated = [...prev];
           const last = updated[updated.length - 1];
           if (last?.role === 'assistant') {
-            updated[updated.length - 1] = { ...last, content: assistantText + '\n\n（本次解读中断，可点下方「继续追问」接着问）' };
+            updated[updated.length - 1] = { ...last, content: assistantText + '\n\n（本次解读中断，可点「重试」重新生成，或直接追问。）' };
           }
           return updated;
         });
+        setRetryInfo({ apiMessages });
       }
     } catch (e) {
       const missing = e instanceof Error && e.message === 'api-missing';
+      const aborted = e instanceof Error && e.name === 'AbortError';
+      if (aborted) failureMessage = '请求超时（3 分钟未响应），可点「重试解读」再试一次。';
       if (streamStarted && assistantText.trim()) {
         // 流已开始但中途断开：保留已生成内容，追加中断说明，不新建一条空失败消息
         setMessages(prev => {
           const updated = [...prev];
           const last = updated[updated.length - 1];
           if (last?.role === 'assistant') {
-            updated[updated.length - 1] = { ...last, content: assistantText + '\n\n（连接中断，以上为已完成部分。可点下方「继续追问」接着问。）' };
+            updated[updated.length - 1] = { ...last, content: assistantText + '\n\n（连接中断，以上为已完成部分。可点「重试」重新生成，或直接追问。）' };
             return updated;
           }
           return [...prev, { role: 'assistant', content: assistantText + '\n\n（连接中断，以上为已完成部分。）', ts: Date.now() }];
         });
+        setRetryInfo({ apiMessages });
       } else {
         setMessages(prev => [...prev, { role: 'assistant', content: missing ? '开源版不含 AI 解读接口（/api/interpret），需要你自己实现后才能用，详见 README「快速开始」。排盘本身不需要任何 API Key。' : failureMessage, ts: Date.now() }]);
+        // HTTP 层失败（402 / 502 / 网络）也允许重试；额度问题除外，重试无意义
+        if (!missing && !failureMessage.includes('已用完')) setRetryInfo({ apiMessages });
       }
     } finally {
+      window.clearTimeout(timeoutId);
       setLoading(false);
       loadingRef.current = false;
       refreshQuota();
+      // 消费排队的自动提问：异步触发，避免递归调用污染当前调用栈
+      const nextAuto = pendingAutoRef.current.shift();
+      setPendingAutoCount(pendingAutoRef.current.length);
+      if (nextAuto) {
+        window.setTimeout(() => {
+          if (!loadingRef.current) sendMessage(nextAuto, true);
+          else pendingAutoRef.current.unshift(nextAuto);
+        }, 120);
+      }
     }
   };
 
   const sendMessage = (text: string, hidden = false) => {
-    if (!text.trim() || loadingRef.current) return;
+    if (!text.trim()) return;
+    if (loadingRef.current) {
+      // 用户手动提问：给出明确提示，不再静默无反应（提示不进消息历史）
+      if (!hidden) {
+        setBusyHint('上一条解读还在生成，请稍候再发');
+        window.setTimeout(() => setBusyHint(''), 3000);
+        return;
+      }
+      // 自动提问：入队，当前解读结束后自动续发（只保留最近 3 条，避免堆积）
+      pendingAutoRef.current = [...pendingAutoRef.current.slice(-2), text];
+      setPendingAutoCount(pendingAutoRef.current.length);
+      return;
+    }
     loadingRef.current = true;
     setLoading(true);
     setChatCleared(false);
@@ -634,6 +692,21 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
 
     setMessages(prev => [...prev, userMsg]);
     setInput('');
+    streamResponse(apiMessages);
+  };
+
+  /** 重试失败的请求：移除失败占位消息，用原参数重发，不重复扣用户提问 */
+  const handleRetry = () => {
+    if (!retryInfo || loadingRef.current) return;
+    const { apiMessages } = retryInfo;
+    setRetryInfo(null);
+    // 失败的 assistant 占位（含中断说明）需要从屏幕上移除，避免重试后出现两条
+    const next = messagesRef.current.slice();
+    while (next.length > 0 && next[next.length - 1].role === 'assistant') next.pop();
+    messagesRef.current = next;
+    setMessages(next);
+    loadingRef.current = true;
+    setLoading(true);
     streamResponse(apiMessages);
   };
 
@@ -813,6 +886,11 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
                 )}
 
                 <div className="ios-turn-actions">
+                  {retryInfo && turn.start === shownTurns[shownTurns.length - 1]?.start && !loading && (
+                    <button type="button" className="ios-turn-retry" onClick={handleRetry} title="用相同问题重新解读">
+                      重试解读
+                    </button>
+                  )}
                   <button
                     type="button"
                     className={`ios-turn-del${confirming ? ' ios-turn-del-confirm' : ''}`}
@@ -871,6 +949,10 @@ ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，�
               </div>
             )}
           </div>
+        )}
+        {busyHint && <div className="ios-pending-auto">{busyHint}</div>}
+        {pendingAutoCount > 0 && (
+          <div className="ios-pending-auto">还有 {pendingAutoCount} 条分析等待生成，完成后会自动继续</div>
         )}
         <div className="ios-compose-head">
           <span className="ios-compose-label">继续追问</span>
