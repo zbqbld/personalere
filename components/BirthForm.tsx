@@ -6,6 +6,7 @@ import { SHICHEN } from '@/lib/ziwei/constants';
 import { useTheme } from '@/components/ThemeProvider';
 import { PROVINCES } from '@/lib/ziwei/cities';
 import type { BirthDraft } from '@/lib/ziwei/memory';
+import { formToBirthInfo, formToTrueSolarTime } from '@/lib/ziwei/share';
 
 /** 与本地记忆模块共用唯一结构定义，避免两处类型漂移 */
 export type BirthFormState = BirthDraft;
@@ -23,15 +24,6 @@ interface BirthFormProps {
 }
 
 const SHICHEN_NAMES = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
-
-/** 根据北京时间 + 经度计算真太阳时时辰支 (0-11) */
-function calcTrueSolarBranch(clockHour: number, clockMinute: number, longitude: number): number {
-  const clockMins = clockHour * 60 + clockMinute;
-  const offset = (longitude - 120) * 4;
-  const solar = ((clockMins + offset) % 1440 + 1440) % 1440;
-  if (solar >= 1380 || solar < 60) return 0;
-  return Math.floor((solar - 60) / 120) + 1;
-}
 
 /** 检查日期是否合法 */
 function isValidDate(y: number, m: number, d: number): boolean {
@@ -72,16 +64,10 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
     return prov ? prov.cities : [];
   }, [form.province]);
 
-  const branch = useMemo(() => {
-    if (form.unknownTime) return 0;
-    return calcTrueSolarBranch(
-      parseInt(form.clockHour) || 0,
-      parseInt(form.clockMinute) || 0,
-      form.longitude,
-    );
-  }, [form.clockHour, form.clockMinute, form.longitude, form.unknownTime]);
-
-  const offsetMin = Math.round((form.longitude - 120) * 4);
+  // 预览与提交共用同一处真太阳时实现（含出生日期对应的均时差），避免两处口径漂移
+  const solarTime = formToTrueSolarTime(form);
+  const branch = form.unknownTime ? 0 : solarTime.branch;
+  const offsetMin = Math.round(solarTime.totalCorrectionMinutes);
   const shichenInfo = SHICHEN[branch];
 
   // ─── 校验逻辑 ───────────────────────────────────────────
@@ -138,7 +124,8 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
     setTouched({ year: true, month: true, day: true });
     if (hasError) return;
     onFormSave?.({ ...form });
-    onSubmit({ year: y, month: m, day: d, hour: branch, gender: form.gender, name: form.name || undefined, province: form.province || undefined, city: form.city || undefined, longitude: form.province ? form.longitude : undefined });
+    // 走统一转换：晚子时换日按真太阳时判定，与预览口径一致（不再手拼 BirthInfo）
+    onSubmit(formToBirthInfo(form));
   };
 
   // ─── 样式变量 ────────────────────────────────────────────
@@ -319,7 +306,7 @@ export default function BirthForm({ onSubmit, loading, initialData, onFormSave, 
               exit={{ opacity: 0 }}
               style={{ fontSize: '10px', color: isDark ? 'rgba(180,210,235,0.85)' : '#5C4A22', marginTop: '5px' }}
             >
-              {form.city || '（请选择城市）'} · 经度 {form.longitude.toFixed(1)}°E · 时差 {offsetMin > 0 ? '+' : ''}{offsetMin} 分钟
+              {form.city || '（请选择城市）'} · 经度 {form.longitude.toFixed(1)}°E · 总时差 {offsetMin > 0 ? '+' : ''}{offsetMin} 分钟{solarTime.dateValid ? '（含均时差）' : ''}
             </motion.p>
           ) : (
             <motion.p

@@ -15,8 +15,10 @@
  *  - 倪师《天纪》紫微斗数讲义
  */
 
-import 'server-only';
-import type { ZiweiChart, Palace, Star } from './types';
+import type { ZiweiChart, Palace, Star, SiHua } from './types';
+import { detectDingGui } from './patterns-dinggui';
+import { detectDingFu } from './patterns-dingfu';
+import { detectDingPin } from './patterns-dingpin';
 
 // ────────────────── 类型 ──────────────────
 export interface PatternCondition {
@@ -99,6 +101,13 @@ function isDim(palace: Palace, starName: string): boolean {
 function getStarSiHua(palace: Palace, starName: string): Star['siHua'] | undefined {
   return findStar(palace, starName)?.siHua;
 }
+// 四化挂在星曜的 siHua 字段上，不是独立星名——不能用 hasStar / sanFangAllStars 查「化禄」
+function palaceHasSiHua(palace: Palace, hua: SiHua): boolean {
+  return palace.stars.some(s => s.siHua === hua);
+}
+function sanFangHasSiHua(chart: ZiweiChart, hua: SiHua): boolean {
+  return getSanFangPalaces(chart).some(p => palaceHasSiHua(p, hua));
+}
 const BRANCH_NAMES = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 
 // ────────────────── 正格识别器 ──────────────────
@@ -171,7 +180,7 @@ function detectFuXiangChaoYuan(chart: ZiweiChart, ming: Palace, patterns: Patter
   const required = ['天府坐命三方', '天相坐命三方', '两星不同宫'];
   const bonus: string[] = [];
   const breaking: string[] = [];
-  if (hasStar(ming, '禄存') || hasStar(ming, '化禄')) bonus.push('命宫见禄');
+  if (hasStar(ming, '禄存') || palaceHasSiHua(ming, '禄')) bonus.push('命宫见禄');
   if (sanFangAllStars(chart).has('左辅')) bonus.push('再会左辅');
   if (hasShaInPalace(ming, SHA_HARD)) breaking.push('命宫坐煞星');
   if (sanFangShaCount(chart, SHA_HARD) >= 3) breaking.push('三方四正煞星过多');
@@ -204,7 +213,7 @@ function detectYangLiangChangLu(chart: ZiweiChart, ming: Palace, patterns: Patte
   const breaking: string[] = [];
   if (isBright(sun, '太阳')) bonus.push('太阳庙旺');
   if (isBright(liang, '天梁')) bonus.push('天梁庙旺');
-  if (sanFangSet.has('化科')) bonus.push('再会化科');
+  if (sanFangHasSiHua(chart, '科')) bonus.push('再会化科');
   if (isDim(sun, '太阳')) breaking.push('太阳落陷（阳梁失辉）');
   if (sanFangShaCount(chart, SHA_HARD) >= 2) breaking.push('三方煞重');
 
@@ -294,7 +303,7 @@ function detectShaPoLang(chart: ZiweiChart, ming: Palace, patterns: Pattern[]) {
   const required = ['七杀、破军、贪狼三星齐入命宫三方四正'];
   const bonus: string[] = [];
   const breaking: string[] = [];
-  if (sanFangSet.has('化禄') || sanFangSet.has('化权')) bonus.push('三方有化禄或化权（动得有力）');
+  if (sanFangHasSiHua(chart, '禄') || sanFangHasSiHua(chart, '权')) bonus.push('三方有化禄或化权（动得有力）');
   if (sanFangSet.has('左辅') && sanFangSet.has('右弼')) bonus.push('辅弼同会（变动中得贵人）');
   if (sanFangShaCount(chart, SHA_HARD) >= 3) breaking.push('煞星过重（动而无成）');
   if (hasShaInPalace(ming, SHA_KONG)) breaking.push('命坐空劫（动得辛苦）');
@@ -319,7 +328,7 @@ function detectJiYueTongLiang(chart: ZiweiChart, ming: Palace, patterns: Pattern
   const bonus: string[] = [];
   const breaking: string[] = [];
   if (sanFangSet.has('文昌') || sanFangSet.has('文曲')) bonus.push('再会昌曲');
-  if (sanFangSet.has('化科')) bonus.push('再会化科');
+  if (sanFangHasSiHua(chart, '科')) bonus.push('再会化科');
   if (sanFangShaCount(chart, SHA_HARD) >= 3) breaking.push('煞星过多（机月同梁忌煞）');
   if (hasShaInPalace(ming, SHA_HARD)) breaking.push('命宫坐煞');
 
@@ -1015,6 +1024,49 @@ function detectKeQuanShuangHui(chart: ZiweiChart, patterns: Pattern[]) {
   });
 }
 
+// ────────────────── 《全书》四张格表 · 严格判定接入 ──────────────────
+//
+// 卷一〈定贵局〉27 /〈定富局〉6 /〈定贫贱局〉8 共 41 条命盘可判格
+// （〈定杂局〉8 条为大限格，另行架构，未收录）。严格实现见
+// patterns-dinggui/dingfu/dingpin.ts：照原文判，不放宽；安星无解的
+// 条目在源表标 unreachable，不参与判定。识别器分工：
+//  - 本文件原有识别器：宽松判据，带加分项/破格警示的 UI 文案；
+//  - 严格版：description 即原书注文，source 带原书条目序号，可溯源。
+// 同名时严格版取代宽松版（君臣庆会/府相朝垣/日月夹命/明珠出海 4 条），
+// 宽松版的 bonus/breaking 原样保留——严格条件是宽松条件的子集，
+// 宽松版能触发时其加分判定依然有效。
+// 马头带剑不参与取代：严格版已证 unreachable（注文「不是居午格」否定了
+// 项目所采读法，见 patterns-dinggui.ts 第 10 条），不会产生命中；
+// 宽松版「马头带箭」按原样保留，其判据质量已在核查报告中标 wrong。
+
+interface QuanshuHit {
+  no: number;
+  name: string;
+  note: string;
+  status: string;
+}
+
+function detectQuanshuStrict(chart: ZiweiChart): Pattern[] {
+  const out: Pattern[] = [];
+  const push = (hits: QuanshuHit[], table: string, level: Pattern['level']) => {
+    for (const h of hits) {
+      const tag = h.status === 'disputed' ? '〔存疑格：注文歧义，按最通行读法判定〕' : '';
+      out.push({
+        name: h.name,
+        level,
+        description: `原书第${h.no}条：「${h.note}」${tag}`,
+        palaces: ['命宫'],
+        conditions: { required: [`《全书》${table}第${h.no}条：${h.note}`] },
+        source: `《紫微斗数全书·卷一·${table}》第${h.no}条`,
+      });
+    }
+  };
+  push(detectDingGui(chart), '定贵局', 'excellent');
+  push(detectDingFu(chart), '定富局', 'good');
+  push(detectDingPin(chart), '定贫贱局', 'caution');
+  return out;
+}
+
 // ────────────────── 主入口 ──────────────────
 export function detectPatterns(chart: ZiweiChart): Pattern[] {
   const patterns: Pattern[] = [];
@@ -1072,7 +1124,27 @@ export function detectPatterns(chart: ZiweiChart): Pattern[] {
   detectKuiYueTongHui(chart, patterns);
   detectKeQuanShuangHui(chart, patterns);
 
-  return patterns;
+  // 《全书》四张格表严格判定接入（同名严格版取代宽松版，见上方注释）
+  const strict = detectQuanshuStrict(chart);
+  const looseByName = new Map(patterns.map(p => [p.name, p]));
+  const out = patterns.slice();
+  for (const s of strict) {
+    const loose = looseByName.get(s.name);
+    if (loose) {
+      const idx = out.indexOf(loose);
+      out[idx] = {
+        ...s,
+        conditions: {
+          required: s.conditions!.required,
+          bonus: loose.conditions?.bonus,
+          breaking: loose.conditions?.breaking,
+        },
+      };
+    } else {
+      out.push(s);
+    }
+  }
+  return out;
 }
 
 // ────────────────── 命宫摘要（保持向后兼容）──────────────────

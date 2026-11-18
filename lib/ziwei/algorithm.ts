@@ -140,6 +140,15 @@ export function resolveEffectiveLunarDate(
   day: number,
   policy: LunarMonthPolicy = 'prev-month',
 ): EffectiveLunarDate {
+  // 闰月归属是字面量联合类型，但本函数可从运行时 JavaScript / JSON API 直接调用，
+  // 类型形同虚设。拼错的 policy 原本会落进下方 if/else 链的尾部，静默按「归本月」
+  // 排盘且把错误值随 chart.birthInfo.leapMonthPolicy 序列化传播——与 hour、公历日期
+  // 的既有校验同一口径：无效输入当场拒绝，而不是产出一张口径不明的盘。
+  if (policy !== 'split' && policy !== 'next-month' && policy !== 'prev-month' && policy !== 'origin-month') {
+    throw new RangeError(
+      `leapMonth policy must be one of 'split' | 'next-month' | 'prev-month' | 'origin-month'; received ${String(policy)}`,
+    );
+  }
   const lunar = Solar.fromYmd(year, month, day).getLunar();
   const rawLunarMonth = Number(lunar.getMonth());
   const rawLunarDay = Number(lunar.getDay());
@@ -448,6 +457,11 @@ export function generateChart(
   const { year, month, day, hour, gender } = birthInfo;
   if (!Number.isInteger(hour) || hour < 0 || hour > 11) {
     throw new RangeError(`hour must be an integer branch index from 0 to 11; received ${hour}`);
+  }
+  // gender 来自运行时（JS / JSON 接口）时类型不被约束，必须在排盘前拒绝非法值，
+  // 否则任何非 'male' 的取值都会被静默当作「女」排出一张错误的盘。
+  if (gender !== 'male' && gender !== 'female') {
+    throw new RangeError(`gender must be 'male' or 'female'; received ${String(gender)}`);
   }
   // 公历日期必须真实存在：2 月 30 日、非闰年 2 月 29 日、4 月 31 日这类日期，
   // iztro 不报错而是顺延成下个月的头几天排盘，结果会和真实日期的盘重复。
