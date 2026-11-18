@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import BirthForm, { type BirthFormState } from '@/components/BirthForm';
 import ChartBoard from '@/components/ChartBoard';
+import PatternsCard from '@/components/PatternsCard';
 import InsightPanel from '@/components/InsightPanel';
 import { generateChart } from '@/lib/ziwei/algorithm';
 import { formToBirthInfo } from '@/lib/ziwei/share';
@@ -398,6 +399,7 @@ export default function ChartPage() {
           <div className="zw-workspace">
             <div className="zw-scroll">
               <ChartBoard chart={chart} onPalaceSelect={setSelectedPalace} />
+              <PatternsCard chart={chart} />
             </div>
             <div className="zw-scroll">
               <InsightPanel

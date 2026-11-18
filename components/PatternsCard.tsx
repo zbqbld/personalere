@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import type { ZiweiChart } from '@/lib/ziwei/types';
 import { detectPatterns } from '@/lib/ziwei/patterns';
@@ -12,6 +13,7 @@ const LevelStyle = {
 
 export default function PatternsCard({ chart }: { chart: ZiweiChart }) {
   const patterns = detectPatterns(chart);
+  const [collapsed, setCollapsed] = useState(false);
   if (patterns.length === 0) return null;
 
   return (
@@ -21,12 +23,20 @@ export default function PatternsCard({ chart }: { chart: ZiweiChart }) {
       transition={{ duration: 0.4 }}
       className="card-glass rounded-xl p-4 mb-4"
     >
-      <div className="text-[10px] tracking-widest mb-3 flex items-center gap-2" style={{ color: 'var(--t-faint)' }}>
+      <button
+        type="button"
+        onClick={() => setCollapsed(v => !v)}
+        className="w-full text-[10px] tracking-widest mb-3 flex items-center gap-2 text-left"
+        style={{ color: 'var(--t-faint)' }}
+        aria-expanded={!collapsed}
+      >
         <span style={{ color: 'var(--t-gold)', opacity: 0.6 }}>◉</span>
         格局识别（严格古书条件）
-        <span className="text-[9px] ml-auto" style={{ color: 'var(--t-faint)', opacity: 0.75 }}>{patterns.length}个</span>
-      </div>
-      <div className="space-y-2">
+        <span className="text-[9px] ml-auto" style={{ color: 'var(--t-faint)', opacity: 0.75 }}>
+          {patterns.length}个 · {collapsed ? '展开' : '收起'}
+        </span>
+      </button>
+      {!collapsed && <div className="space-y-2">
         {patterns.map((p, i) => {
           const st = LevelStyle[p.level];
           return (
@@ -87,7 +97,7 @@ export default function PatternsCard({ chart }: { chart: ZiweiChart }) {
             </motion.div>
           );
         })}
-      </div>
+      </div>}
     </motion.div>
   );
 }
