@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { AUTH_COOKIE } from '@/lib/account/contract';
 import { billingGate } from '@/lib/billing/server';
+import { streamUpstream } from '@/lib/ai/stream-upstream';
 
 // 命盘 AI 解读接口（OpenAI 兼容流式协议）
 // 前端在 components/ChatPanel.tsx / InsightPanel.tsx 以 SSE 方式消费：
@@ -67,87 +68,5 @@ export async function POST(req: NextRequest) {
   } else if (model.startsWith('glm-5.3')) {
     payload.reasoning_effort = 'low';
   }
-
-  let upstream: Response;
-  try {
-    upstream = await fetch(`${baseURL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(payload),
-    });
-  } catch (e) {
-    return new Response(`Upstream request failed: ${(e as Error).message}`, { status: 502 });
-  }
-
-  if (!upstream.ok || !upstream.body) {
-    const txt = await upstream.text().catch(() => '');
-    return new Response(`Upstream error ${upstream.status}: ${txt}`, { status: 502 });
-  }
-
-  const reader = upstream.body.getReader();
-  const decoder = new TextDecoder();
-  const encoder = new TextEncoder();
-
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      let buffer = '';
-      let lastBeat = 0;
-      const push = (s: string) => controller.enqueue(encoder.encode(s));
-      // 立即冲刷响应头：即使模型处于思考阶段（仅 reasoning_content），
-      // 前端也能马上拿到 200 响应进入“加载中”，不会被误判为失败。
-      push(': connected\n');
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() ?? '';
-          for (const raw of lines) {
-            const line = raw.trim();
-            if (!line.startsWith('data:')) continue;
-            const data = line.slice(5).trim();
-            if (!data || data === '[DONE]') {
-              push('data: [DONE]\n');
-              continue;
-            }
-            try {
-              const json = JSON.parse(data);
-              const text: string = json?.choices?.[0]?.delta?.content ?? '';
-              if (text) {
-                push(`data: ${JSON.stringify({ delta: { text } })}\n`);
-              } else {
-                // 思考阶段：每 2 秒发一次 SSE 注释保活，避免连接被判超时
-                const now = Date.now();
-                if (now - lastBeat > 2000) {
-                  push(': keep-alive\n');
-                  lastBeat = now;
-                }
-              }
-            } catch {
-              /* 跳过非 JSON 行 */
-            }
-          }
-        }
-        push('data: [DONE]\n');
-      } catch (e) {
-        // 上游异常必须显式告知前端，否则静默 [DONE] 会让用户拿到半截内容却以为解读完成
-        push(`data: ${JSON.stringify({ error: 'upstream_interrupted', message: (e as Error)?.message || '上游连接中断' })}\n`);
-        push('data: [DONE]\n');
-      } finally {
-        controller.close();
-      }
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream; charset=utf-8',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
-    },
-  });
+  return streamUpstream(payload, apiKey, baseURL);
 }

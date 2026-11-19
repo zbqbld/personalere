@@ -6,7 +6,8 @@
  * 任何未登录、他人账号、越权指定 userId 的情况统一返回 403 ACCESS_DENIED。
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { ACCESS_DENIED, AUTH_COOKIE, DENY_STATUS, deny, type Failure, type ProfileInput, type ServiceResult } from '@/lib/account/contract';
+import { ACCESS_DENIED, type Failure, type ProfileInput, type ServiceResult } from '@/lib/account/contract';
+import { tokenOf, denyResponse } from '@/lib/account/http';
 import { initAccountBackend } from '@/lib/account/context';
 import { requireOwner } from '@/lib/account/guard';
 import {
@@ -22,14 +23,6 @@ import type { BirthDraft } from '@/lib/ziwei/memory';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-function tokenOf(req: NextRequest): string | undefined {
-  return req.cookies.get(AUTH_COOKIE)?.value;
-}
-
-function denyResponse(): NextResponse {
-  return NextResponse.json(deny(), { status: DENY_STATUS });
-}
 
 function respond(r: ServiceResult<unknown>): NextResponse {
   if (r.ok) return NextResponse.json({ ok: true, data: r.data });

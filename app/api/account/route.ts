@@ -6,7 +6,8 @@
  * 每个请求先注入 Cloudflare D1（若在 Workers），再走统一异步业务层。
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { ACCESS_DENIED, AUTH_COOKIE, DENY_STATUS, SESSION_TTL_MS, deny, type Failure, type ServiceResult } from '@/lib/account/contract';
+import { ACCESS_DENIED, AUTH_COOKIE, SESSION_TTL_MS, type Failure, type ServiceResult } from '@/lib/account/contract';
+import { tokenOf, denyResponse } from '@/lib/account/http';
 import { initAccountBackend, getCloudflareDB } from '@/lib/account/context';
 import { bindOwnedProfiles, currentAccount, login, logout, register } from '@/lib/account/service';
 import { normalizeUsername } from '@/lib/account/validation';
@@ -19,14 +20,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-function tokenOf(req: NextRequest): string | undefined {
-  return req.cookies.get(AUTH_COOKIE)?.value;
-}
-
-function denyResponse(): NextResponse {
-  return NextResponse.json(deny(), { status: DENY_STATUS });
-}
 
 function failureResponse(r: Failure): NextResponse {
   if (r.code === ACCESS_DENIED.code) return denyResponse();
