@@ -468,6 +468,18 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, cha
       : '空宫（借对宫）';
     const role = PALACE_ROLES[selectedPalace.name] ?? '';
 
+    // 三方四正三宫必须点名并列出主星：AI 只拿到整盘 JSON，不写明具体宫位时
+    // 会自己挑宫或泛泛而谈，导致解读没有按三方四正展开（用户实测反馈）
+    const sanFangDesc = [
+      (selectedPalace.branch + 4) % 12,
+      (selectedPalace.branch + 8) % 12,
+      (selectedPalace.branch + 6) % 12,
+    ].map(b => chart.palaces.find(p => p.branch === b)).filter(Boolean).map(p => {
+      const stars = p!.stars.filter(s => s.type === 'major')
+        .map(s => `${s.name}${s.siHua ? '化' + s.siHua : ''}`).join('、') || '空宫';
+      return `${p!.name}（主星：${stars}）`;
+    }).join('、');
+
     const prompt = `请重点分析【${selectedPalace.name}】（主管：${role}），该宫主星为${starDesc}，按以下结构输出：
 
 **【宫位定性】**
@@ -477,7 +489,8 @@ ${selectedPalace.name}在命盘中的意义，以及这种星曜配置的整体�
 主星在此宫的倪海厦体系解读，引用具体观点。
 
 **【三方四正联动】**
-三方四正宫位对此宫的影响。
+本宫三方四正共四宫：${selectedPalace.name}（本宫）、${sanFangDesc}。
+请逐一分析除本宫外这三个宫位的主星如何影响本宫，每个宫单独成段，三个宫都要覆盖，不要遗漏或替换成其他宫位。
 
 **【实际建议】**
 基于此宫的具体建议。`;
@@ -499,6 +512,13 @@ ${selectedPalace.name}在命盘中的意义，以及这种星曜配置的整体�
     const palaceName = palaceOfStar?.name ?? '未知宫位';
     const viewLabel = selectedSiHua.view === 'daxian' ? '大限' : '流年';
 
+    // 飞化分析同样点名三方四正三宫，避免 AI 自行挑宫（与宫位分析同一问题模式）
+    const siHuaSanFang = palaceOfStar ? [
+      (palaceOfStar.branch + 4) % 12,
+      (palaceOfStar.branch + 8) % 12,
+      (palaceOfStar.branch + 6) % 12,
+    ].map(b => chart.palaces.find(p => p.branch === b)?.name).filter(Boolean).join('、') : '';
+
     const prompt = `请分析【${viewLabel}${selectedSiHua.starName}化${selectedSiHua.siHua}】的飞化影响，按以下结构输出：
 
 **【化${selectedSiHua.siHua}基本含义】**
@@ -508,7 +528,8 @@ ${selectedPalace.name}在命盘中的意义，以及这种星曜配置的整体�
 ${selectedSiHua.starName}化${selectedSiHua.siHua}落在【${palaceName}】，该宫主管的领域受到何种影响，倪师如何解读。
 
 **【三方四正飞化路径】**
-化${selectedSiHua.siHua}入${palaceName}后，对其三方四正（对宫、两个三合宫）的联动影响。
+${palaceName}的三方四正为：${palaceName}（本宫）、${siHuaSanFang}。
+请逐一分析化${selectedSiHua.siHua}沿这三个宫位的联动影响，每个宫单独成段，不要遗漏或替换成其他宫位。
 
 **【当前运势影响】**
 在${viewLabel}时间维度下，此化${selectedSiHua.siHua}对命主近期运势的具体影响。

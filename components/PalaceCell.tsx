@@ -90,13 +90,17 @@ export default function PalaceCell({
           : isMingGong
           ? 'rgba(212,168,67,0.04)'
           : 'var(--t-bg)',
-        boxShadow: isCurrentDaXian
-          ? 'inset 3px 0 0 rgba(147,51,234,0.5)'
-          : isSelected
-          ? 'inset 0 0 0 1.5px rgba(37,99,235,0.7)'
-          : isSanFang
-          ? 'inset 0 0 0 1px rgba(37,99,235,0.4)'
-          : 'none',
+        // 三种标记可同时成立（如田宅宫既是三方成员又是当前大限宫）：
+        // 大限紫条与三方/选中蓝框必须叠加显示，不能互相覆盖，
+        // 否则用户会以为该宫不在三方四正里（曾导致「三方四正排错」的误解）
+        boxShadow: [
+          isCurrentDaXian ? 'inset 3px 0 0 rgba(147,51,234,0.5)' : '',
+          isSelected
+            ? 'inset 0 0 0 1.5px rgba(37,99,235,0.7)'
+            : isSanFang
+            ? 'inset 0 0 0 1px rgba(37,99,235,0.4)'
+            : '',
+        ].filter(Boolean).join(', ') || 'none',
       }}
     >
       {/* 大限年龄 */}

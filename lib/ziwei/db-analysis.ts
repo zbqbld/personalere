@@ -14,7 +14,7 @@ export type TopicKey =
   | 'overview' | 'personality' | 'love' | 'career' | 'wealth' | 'health'
   | 'family' | 'children' | 'move' | 'friends' | 'home' | 'spirit' | 'parents';
 
-// iztro zh-CN 宫位名：命宫保留「宫」字，其余无「宫」字，「交友」在 iztro 里叫「仆役」
+// iztro zh-CN 宫位名：命宫保留「宫」字，其余无「宫」字，引擎已把 iztro 旧称「仆役」统一显示为「交友」（algorithm.ts 宫名映射）
 export const TOPIC_PALACE_NAME: Record<TopicKey, string> = {
   overview:    '命宫',
   personality: '命宫',
@@ -25,7 +25,7 @@ export const TOPIC_PALACE_NAME: Record<TopicKey, string> = {
   family:      '兄弟',
   children:    '子女',
   move:        '迁移',
-  friends:     '仆役',
+  friends:     '交友',
   home:        '田宅',
   spirit:      '福德',
   parents:     '父母',

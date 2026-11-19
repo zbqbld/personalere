@@ -15,7 +15,8 @@ import { generateChart } from '../../lib/ziwei/algorithm';
 import type { BirthInfo, ZiweiChart } from '../../lib/ziwei/types';
 
 const BR = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
-const PALACE_12 = ['命宫','兄弟','夫妻','子女','财帛','疾厄','迁移','仆役','官禄','田宅','福德','父母'];
+// 2026-11-19 起引擎统一用「交友」（原 iztro 旧称「仆役」改名，见 algorithm.ts 宫名映射）
+const PALACE_12 = ['命宫','兄弟','夫妻','子女','财帛','疾厄','迁移','交友','官禄','田宅','福德','父母'];
 
 let failures = 0;
 const fail = (msg: string) => { console.error(`  ✗ ${msg}`); failures++; };

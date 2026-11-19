@@ -569,7 +569,9 @@ export function generateChart(
     return {
       branch:        branch >= 0 ? branch : 0,
       stem:          stem >= 0 ? stem : 0,
-      name:          p.name as string,
+      // iztro 旧称「仆役」统一显示为「交友」：与 constants 的 PALACE_NAMES_ORDER 一致，
+      // 避免界面上出现两套宫名让用户误以为宫位排错（三方四正宫名核对也按此口径）
+      name:          (p.name === '仆役' ? '交友' : p.name) as string,
       stars:         allStars,
       daXianAge:     range ? [range[0], range[1]] as [number, number] : undefined,
       isMingGong:    p.name === '命宫',
