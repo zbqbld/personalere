@@ -6,6 +6,7 @@
  * 不引用被测实现，作为交叉验证的独立神谕。
  */
 import assert from 'node:assert/strict';
+import { generateChart } from '../../lib/ziwei/algorithm';
 
 const ZHI = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
 const name = (i: number) => ZHI[((i % 12) + 12) % 12];
@@ -38,4 +39,21 @@ for (let b = 0; b < 12; b++) {
   assert.equal(name((b + 6) % 12), name(b + 6), `${name(b)}宫对宫索引应为 +6`);
 }
 
-console.log('sanfang-mapping.test.ts: PASS (12 宫逐一核对：本宫 + 对宫 + 两三合宫全部一致)');
+// ── 宫名语义层：命宫的三方四正必须是 命宫+财帛+官禄+迁移（真实排盘）──
+// 宫名确认：引擎宫名为「命宫」「财帛」「官禄」「迁移」（不带"宫"字尾，命宫除外）
+const SEMANTIC_WANT = ['命宫','财帛','官禄','迁移'].sort().join(',');
+const samples: Array<[number,number,number,number,'male'|'female']> = [
+  [1988,10,8,11,'male'], [1990,3,15,6,'female'], [2000,7,1,11,'male'],
+  [1975,1,30,4,'female'], [2010,12,31,9,'male'],
+];
+for (const [y,m,d,h,g] of samples) {
+  const chart = generateChart({ year:y, month:m, day:d, hour:h, gender:g });
+  const ming = chart.palaces.find(p => p.isMingGong);
+  assert.ok(ming, `${y}-${m}-${d} 应有命宫`);
+  const byBranch = (b:number) => chart.palaces.find(p => p.branch === b)?.name ?? '?';
+  const sanFang = [ming.branch, (ming.branch+4)%12, (ming.branch+8)%12, (ming.branch+6)%12].map(byBranch);
+  assert.equal([...sanFang].sort().join(','), SEMANTIC_WANT,
+    `${y}-${m}-${d} 命宫三方四正宫名应为 命宫+财帛+官禄+迁移，实际[${sanFang}]`);
+}
+
+console.log('sanfang-mapping.test.ts: PASS (12 宫偏移核对 + 5 盘宫名语义核对全部一致)');
