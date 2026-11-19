@@ -53,6 +53,30 @@ export default function ChartPage() {
   const [autoRestored, setAutoRestored] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [toast, setToast] = useState('');
+  /** 左右分栏比例：左栏宽度百分比，可拖动分隔线调整（30–70） */
+  const [leftPct, setLeftPct] = useState(46);
+  const workspaceRef = useRef<HTMLDivElement | null>(null);
+  const draggingRef = useRef(false);
+
+  /** 拖动分隔线：只改布局比例，不触碰任何业务数据 */
+  const startDrag = useCallback((e: React.PointerEvent) => {
+    // 窄屏为单列，拖动条隐藏，理论上不会触发；仍做防御
+    if (window.innerWidth <= 900) return;
+    draggingRef.current = true;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }, []);
+  const onDrag = useCallback((e: React.PointerEvent) => {
+    if (!draggingRef.current || !workspaceRef.current) return;
+    const rect = workspaceRef.current.getBoundingClientRect();
+    if (rect.width === 0) return;
+    const pct = ((e.clientX - rect.left) / rect.width) * 100;
+    setLeftPct(Math.max(30, Math.min(70, pct)));
+  }, []);
+  const endDrag = useCallback((e: React.PointerEvent) => {
+    draggingRef.current = false;
+    const el = e.currentTarget as HTMLElement;
+    if (el.hasPointerCapture?.(e.pointerId)) el.releasePointerCapture(e.pointerId);
+  }, []);
   /** 顶层「清除记忆」时递增，通知解读面板同步清空内存中的对话 */
   const [chatResetSignal, setChatResetSignal] = useState(0);
   /** 当前登录账号；null 表示匿名模式，用户档案只写本地 */
@@ -396,12 +420,35 @@ export default function ChartPage() {
             </div>
           )}
 
-          <div className="zw-workspace">
-            <div className="zw-scroll">
+          <div
+            className="zw-workspace"
+            ref={workspaceRef}
+            style={{ gridTemplateColumns: `minmax(0, ${leftPct}fr) 10px minmax(0, ${100 - leftPct}fr)` }}
+          >
+            {/* 左栏：命盘图表，宽度受分隔线控制 */}
+            <div className="zw-scroll zw-pane-left">
               <ChartBoard chart={chart} onPalaceSelect={setSelectedPalace} />
-              <PatternsCard chart={chart} />
             </div>
-            <div className="zw-scroll">
+
+            {/* 可拖动分隔线：仅调整两栏宽度，不改任何业务数据 */}
+            <div
+              className="zw-splitter"
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="拖动调整命盘与解读的宽度"
+              onPointerDown={startDrag}
+              onPointerMove={onDrag}
+              onPointerUp={endDrag}
+              onPointerCancel={endDrag}
+              onDoubleClick={() => setLeftPct(46)}
+              title="拖动调整宽度，双击复位"
+            >
+              <span className="zw-splitter-grip" aria-hidden="true" />
+            </div>
+
+            {/* 右栏：解析内容，格局 + AI 解读，按层级排版 */}
+            <div className="zw-scroll zw-pane-right">
+              <PatternsCard chart={chart} />
               <InsightPanel
                 chart={chart}
                 selectedPalace={selectedPalace}

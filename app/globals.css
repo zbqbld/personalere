@@ -646,15 +646,48 @@ body {
 .zw-status-meta { color: var(--tx-3); }
 .zw-timenav-wrap { max-width: 1280px; margin: 0 auto; padding: 14px 20px 0; }
 .zw-workspace {
-  max-width: 1280px; margin: 0 auto;
+  max-width: 1440px; margin: 0 auto;
   padding: 16px 20px 44px;
   display: grid;
-  /* 标题 → 命盘 → 对话框 自上而下排列 */
-  grid-template-columns: minmax(0, 1fr);
-  gap: 18px; align-items: start;
+  /* 左：命盘  |  分隔线  |  右：解析。列宽由内联 style 控制，可拖动 */
+  grid-template-columns: minmax(0, 46fr) 10px minmax(0, 54fr);
+  gap: 16px; align-items: start;
 }
-.zw-scroll { min-width: 0; scrollbar-width: none; -ms-overflow-style: none; }
+.zw-scroll {
+  min-width: 0; max-width: 100%;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
 .zw-scroll::-webkit-scrollbar { display: none; }
+
+/* 两栏共用同一套视觉节奏：内边距 / 圆角 / 面板间距一致 */
+.zw-pane-left, .zw-pane-right { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* 命盘固定在视口内，滚动时始终可见；窄屏时取消 sticky */
+.zw-pane-left { position: sticky; top: 12px; }
+/* 右栏解析内容：标题 / 小节 / 要点层级由各组件自身渲染，这里统一外框与行高 */
+.zw-pane-right > * { min-width: 0; }
+
+/* 可拖动分隔线 */
+.zw-splitter {
+  position: sticky; top: 12px;
+  align-self: stretch;
+  min-height: 320px;
+  display: grid; place-items: center;
+  cursor: col-resize;
+  touch-action: none;             /* 触摸拖动不被页面滚动抢走 */
+  user-select: none;
+  border-radius: var(--r-pill, 999px);
+  background: var(--t-border, rgba(120,120,120,.2));
+  opacity: .5;
+  transition: opacity .15s ease, background .15s ease;
+}
+.zw-splitter:hover, .zw-splitter:active { opacity: 1; background: var(--t-gold, #c9a227); }
+.zw-splitter:focus-visible { outline: 2px solid var(--t-gold, #c9a227); outline-offset: 2px; }
+.zw-splitter-grip {
+  width: 2px; height: 34px; border-radius: 2px;
+  background: var(--bg-1, rgba(255,255,255,.6));
+}
+/* 命盘图在栏内不溢出：SVG 自适应，容器不产生横向滚动 */
+.zw-pane-left svg { max-width: 100%; height: auto; }
 
 .zw-toast {
   position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
@@ -669,11 +702,19 @@ body {
   white-space: nowrap;
 }
 
-/* 响应式：≤767px 垂直堆叠；≤360px 收紧 */
+/* 响应式：≤900px 两栏改为上下堆叠（内联列宽用 !important 覆盖）；≤360px 收紧 */
+@media (max-width: 900px) {
+  .zw-workspace {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px; padding: 12px 14px 32px;
+  }
+  .zw-splitter { display: none; }
+  .zw-pane-left { position: static; }   /* 窄屏取消 sticky，避免遮住解析 */
+}
 @media (max-width: 767px) {
   .zw-topbar-inner { padding: 0 12px; }
   .zw-brand-sub { display: none; }
-  .zw-workspace { grid-template-columns: 1fr; gap: 14px; padding: 12px 14px 32px; }
+  .zw-workspace { padding: 12px 14px 32px; }
   .zw-timenav-wrap { padding: 12px 14px 0; }
   .zw-status-strip { padding: 10px 14px 0; }
   .zw-hero { padding: 26px 14px 12px; }
