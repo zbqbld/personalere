@@ -686,8 +686,9 @@ body {
   width: 2px; height: 34px; border-radius: 2px;
   background: var(--bg-1, rgba(255,255,255,.6));
 }
-/* 命盘图在栏内不溢出：SVG 自适应，容器不产生横向滚动 */
-.zw-pane-left svg { max-width: 100%; height: auto; }
+/* 命盘用百分比 grid 自适应，本身不会横向溢出。
+   不要在这里写 svg { height:auto }：三方四正的连线 SVG 依赖
+   width/height=100% 撑满绝对定位容器，全局覆盖会让连线错位。 */
 
 .zw-toast {
   position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);

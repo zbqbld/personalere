@@ -45,7 +45,7 @@ for (const needle of [
   'grid-template-columns: minmax(0, 46fr) 10px minmax(0, 54fr)',
   '.zw-pane-left { position: sticky; top: 12px; }',
   'touch-action: none;',
-  '.zw-pane-left svg { max-width: 100%; height: auto; }',
+  '不要在这里写 svg { height:auto }',
   '@media (max-width: 900px)',
   'grid-template-columns: minmax(0, 1fr) !important;',
   '.zw-splitter { display: none; }',
