@@ -6,12 +6,18 @@ import { BRANCHES, STEMS } from '@/lib/ziwei/constants';
 import { boshiShenName, jiangQianShenName, suiQianShenName } from '@/lib/ziwei/shier-shen';
 import PalaceCell from './PalaceCell';
 import TimeNav, { type TimeView, getYearStemIndex, buildSiHuaOverlay } from './TimeNav';
+import type { Plan, FeatureKey } from '@/lib/membership/plan';
+import { xiaoXianBranch, liuYueBranch, liuRiBranch, liuShiBranch, nominalAge } from '@/lib/ziwei/time-dims';
 
 interface ChartBoardProps {
   chart: ZiweiChart;
   onStarSelect?: (star: Star, palace: Palace) => void;
   onPalaceSelect?: (palace: Palace) => void;
   onSiHuaClick?: (starName: string, siHua: string, view: TimeView) => void;
+  /** 会员等级：控制流月/流日/流时是否可用 */
+  plan?: Plan;
+  /** 点击锁定维度时的回调（由页面弹升级说明） */
+  onLocked?: (key: FeatureKey) => void;
 }
 
 const BRANCH_GRID_POS: Record<number, [number, number]> = {
@@ -53,10 +59,14 @@ function getSanFangSiZheng(branch: number): [number, number, number, number] {
 
 const ANIMATION_ORDER = [5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4];
 
-export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHuaClick }: ChartBoardProps) {
+export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHuaClick, plan = 'free', onLocked }: ChartBoardProps) {
   const [selectedBranch, setSelectedBranch] = useState<number | null>(null);
   const [timeView, setTimeView] = useState<TimeView>('mingpan');
   const [liunianYear, setLiunianYear] = useState<number>(new Date().getFullYear());
+  // 流月/流日/流时的当前选择（专业版维度；默认取当下的月/日/时辰）
+  const [liunianMonth, setLiunianMonth] = useState<number>(new Date().getMonth() + 1);
+  const [liunianDay, setLiunianDay] = useState<number>(new Date().getDate());
+  const [liunianHour, setLiunianHour] = useState<number>(Math.floor(((new Date().getHours() + 1) % 24) / 2));
   /** 盘面显隐：仅控制网格与图例，不影响标题、数据与右侧解读 */
   const [chartVisible, setChartVisible] = useState(true);
 
@@ -97,6 +107,21 @@ export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHu
   const sanFangBranches = selectedBranch !== null ? getSanFangSiZheng(selectedBranch) : null;
   const sanFangSet = sanFangBranches ? new Set(sanFangBranches) : null;
 
+  // 当前时间维度的落宫（小限 / 流月 / 流日 / 流时），用于盘面标记
+  const timeMark = (() => {
+    if (timeView === 'mingpan' || timeView === 'daxian' || timeView === 'liunian') return null;
+    const yearBranch = ((liunianYear - 4) % 12 + 12) % 12;
+    const monthBranch = liuYueBranch(yearBranch, liunianMonth);
+    const dayBranch = liuRiBranch(monthBranch, liunianDay);
+    if (timeView === 'xiaoxian') {
+      const age = nominalAge(chart.birthInfo.year, liunianYear);
+      return { branch: xiaoXianBranch(chart.mingGongBranch, chart.birthInfo.gender, age), label: '小限' };
+    }
+    if (timeView === 'liuyue') return { branch: monthBranch, label: '流月' };
+    if (timeView === 'liuri') return { branch: dayBranch, label: '流日' };
+    return { branch: liuShiBranch(dayBranch, liunianHour), label: '流时' };
+  })();
+
   return (
     <div className={`w-full select-none${chartVisible ? '' : ' chart-hidden-state'}`}>
       {/* 时间导航轴 */}
@@ -106,6 +131,14 @@ export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHu
         liunianYear={liunianYear}
         onViewChange={setTimeView}
         onYearChange={setLiunianYear}
+        plan={plan}
+        liunianMonth={liunianMonth}
+        liunianDay={liunianDay}
+        liunianHour={liunianHour}
+        onMonthChange={setLiunianMonth}
+        onDayChange={setLiunianDay}
+        onHourChange={setLiunianHour}
+        onLocked={onLocked ?? (() => {})}
       />
 
       {/* 盘面显隐切换：隐藏时不渲染盘面，也不保留任何占位 */}
@@ -151,6 +184,7 @@ export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHu
             <div key={branch} style={{ gridRow: row, gridColumn: col, background: 'var(--t-bg)' }}>
               <PalaceCell
                 palace={palace}
+                timeMark={timeMark && timeMark.branch === branch ? timeMark.label : undefined}
                 shierShen={{
                   boshi: boshiShenName(chart.lunarInfo.yearStem, chart.birthInfo.gender, branch),
                   jiangQian: jiangQianShenName(shierShenAnchor, branch),

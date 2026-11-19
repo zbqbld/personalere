@@ -1,6 +1,7 @@
 node_modules/
 .next/
 .next.bak.*/
+.next-bak-*/
 *.log
 !node_modules/**
 .vercel/

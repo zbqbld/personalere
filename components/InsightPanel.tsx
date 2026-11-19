@@ -1,6 +1,10 @@
 'use client';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { Plan, FeatureKey } from '@/lib/membership/plan';
+import { hasFeature, PRO_WEEKLY_QUOTA } from '@/lib/membership/plan';
+import { proQuotaLeft, consumeProQuota } from '@/lib/membership/store';
+import { LockIcon } from './ProGate';
 import type { ZiweiChart, Palace } from '@/lib/ziwei/types';
 import type { TimeView } from './TimeNav';
 import { buildTurns, messagesWithoutTurn, type ChatTurn } from '@/lib/ziwei/chat-turns';
@@ -34,6 +38,10 @@ interface InsightPanelProps {
   selectedSiHua?: SelectedSiHua | null;
   /** 顶层执行「清除全部记忆」时递增，用于同步清空内存中的对话 */
   chatResetSignal?: number;
+  /** 会员等级：非专业版时锁定十三宫维度 */
+  plan?: Plan;
+  /** 触发升级说明 */
+  onLocked?: (key: FeatureKey) => void;
 }
 
 /**
@@ -59,6 +67,12 @@ const TOPICS = [
   { key: 'wealth',      label: '财运' },
   { key: 'health',      label: '健康' },
   { key: 'personality', label: '性格' },
+] as const;
+
+/** 十三宫维度：免费版开放核心六维，专业版开放全部宫位（与参考站分层一致） */
+const PALACE_DIMS = [
+  '兄弟', '夫妻', '子女', '财帛', '疾厄', '迁移',
+  '交友', '官禄', '田宅', '福德', '父母',
 ] as const;
 
 const TOPIC_PROMPTS: Record<string, string> = {
@@ -176,7 +190,7 @@ const PALACE_ROLES: Record<string, string> = {
 
 
 
-export default function InsightPanel({ chart, selectedPalace, selectedSiHua, chatResetSignal = 0 }: InsightPanelProps) {
+export default function InsightPanel({ chart, selectedPalace, selectedSiHua, chatResetSignal = 0, plan = 'free', onLocked }: InsightPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -190,6 +204,8 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, cha
 
   // ── 解读额度（计费开启时在输入栏上方显示；本地免登录模式 enabled:false 自动隐藏）──
   const [quota, setQuota] = useState<{ freeLeft: number; credits: number } | null>(null);
+  /** 专业版本周剩余额度（本地模拟计数） */
+  const [proLeft, setProLeft] = useState(0);
   // 就地兑换卡密：额度条旁「兑换」按钮展开输入框，不必切回账号面板
   const [showRedeem, setShowRedeem] = useState(false);
   const [redeemCode, setRedeemCode] = useState('');
@@ -242,6 +258,7 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, cha
       .catch(() => { /* 静默：额度显示失败不影响解读 */ });
   }, []);
   useEffect(() => { refreshQuota(); }, [refreshQuota]);
+  useEffect(() => { setProLeft(plan === 'pro' ? proQuotaLeft() : 0); }, [plan, messages.length]);
 
   // ── 长对话浏览 / 单轮删除（仅 UI 层，不改变消息与上下文契约）──
   /** 三档密度：舒适 / 紧凑 / 极简，默认紧凑 */
@@ -457,46 +474,60 @@ export default function InsightPanel({ chart, selectedPalace, selectedSiHua, cha
     sendMessage(TOPIC_PROMPTS.overview, true);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Inject palace analysis when palace selected
-  useEffect(() => {
-    if (!selectedPalace || selectedPalace.branch === lastPalaceBranch.current) return;
-    lastPalaceBranch.current = selectedPalace.branch;
-
-    const majorStars = selectedPalace.stars.filter(s => s.type === 'major');
+  /** 构造宫位分析 prompt：盘面点击与十三宫维度共用，保证两处口径一致 */
+  const buildPalacePrompt = useCallback((palace: Palace): string => {
+    const majorStars = palace.stars.filter(s => s.type === 'major');
     const starDesc = majorStars.length > 0
       ? majorStars.map(s => `${s.name}${s.siHua ? '化' + s.siHua : ''}`).join('、')
       : '空宫（借对宫）';
-    const role = PALACE_ROLES[selectedPalace.name] ?? '';
+    const role = PALACE_ROLES[palace.name] ?? '';
 
     // 三方四正三宫必须点名并列出主星：AI 只拿到整盘 JSON，不写明具体宫位时
     // 会自己挑宫或泛泛而谈，导致解读没有按三方四正展开（用户实测反馈）
     const sanFangDesc = [
-      (selectedPalace.branch + 4) % 12,
-      (selectedPalace.branch + 8) % 12,
-      (selectedPalace.branch + 6) % 12,
+      (palace.branch + 4) % 12,
+      (palace.branch + 8) % 12,
+      (palace.branch + 6) % 12,
     ].map(b => chart.palaces.find(p => p.branch === b)).filter(Boolean).map(p => {
       const stars = p!.stars.filter(s => s.type === 'major')
         .map(s => `${s.name}${s.siHua ? '化' + s.siHua : ''}`).join('、') || '空宫';
       return `${p!.name}（主星：${stars}）`;
     }).join('、');
 
-    const prompt = `请重点分析【${selectedPalace.name}】（主管：${role}），该宫主星为${starDesc}，按以下结构输出：
+    return `请重点分析【${palace.name}】（主管：${role}），该宫主星为${starDesc}，按以下结构输出：
 
 **【宫位定性】**
-${selectedPalace.name}在命盘中的意义，以及这种星曜配置的整体判断。
+${palace.name}在命盘中的意义，以及这种星曜配置的整体判断。
 
 **【主星解读】**
 主星在此宫的倪海厦体系解读，引用具体观点。
 
 **【三方四正联动】**
-本宫三方四正共四宫：${selectedPalace.name}（本宫）、${sanFangDesc}。
+本宫三方四正共四宫：${palace.name}（本宫）、${sanFangDesc}。
 请逐一分析除本宫外这三个宫位的主星如何影响本宫，每个宫单独成段，三个宫都要覆盖，不要遗漏或替换成其他宫位。
 
 **【实际建议】**
 基于此宫的具体建议。`;
+  }, [chart]);
 
-    sendMessage(prompt, true);
+  // Inject palace analysis when palace selected（盘面点击）
+  useEffect(() => {
+    if (!selectedPalace || selectedPalace.branch === lastPalaceBranch.current) return;
+    lastPalaceBranch.current = selectedPalace.branch;
+    sendMessage(buildPalacePrompt(selectedPalace), true);
   }, [selectedPalace]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** 十三宫维度点击：非专业版给升级说明，专业版直接分析该宫 */
+  const handlePalaceDim = (dimName: string) => {
+    if (!hasFeature(plan, 'analysis.full13')) {
+      onLocked?.('analysis.full13');
+      return;
+    }
+    const palace = chart.palaces.find(p => p.name === dimName);
+    if (!palace) return;
+    lastPalaceBranch.current = palace.branch;
+    sendMessage(buildPalacePrompt(palace), true);
+  };
 
   // 注入四化飞化分析
   useEffect(() => {
@@ -553,7 +584,11 @@ ${palaceName}的三方四正为：${palaceName}（本宫）、${siHuaSanFang}。
     try {
       const res = await fetch('/api/interpret', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          // 专业版标识：服务端据此放行卡密门禁（本地模拟阶段的权宜做法，见 billing/server.ts 注释）
+          ...(plan === 'pro' ? { 'x-ziwei-plan': 'pro' } : {}),
+        },
         body: JSON.stringify({ chart, messages: apiMessages }),
         signal: controller.signal,
       });
@@ -700,6 +735,16 @@ ${palaceName}的三方四正为：${palaceName}（本宫）、${siHuaSanFang}。
       setPendingAutoCount(pendingAutoRef.current.length);
       return;
     }
+    // 专业版本周额度（本地模拟计数）：用尽时明确提示，不静默失败
+    if (plan === 'pro' && proQuotaLeft() <= 0) {
+      setBusyHint(`本周 ${PRO_WEEKLY_QUOTA} 次专业版额度已用完，下周自动重置`);
+      window.setTimeout(() => setBusyHint(''), 3200);
+      return;
+    }
+    if (plan === 'pro') {
+      const left = consumeProQuota();
+      setProLeft(left);
+    }
     loadingRef.current = true;
     setLoading(true);
     setChatCleared(false);
@@ -807,6 +852,32 @@ ${palaceName}的三方四正为：${palaceName}（本宫）、${siHuaSanFang}。
                 }}
               >
                 {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 十三宫维度：免费锁定，专业版开放（点击给说明，不静默失效） */}
+        <div className="grid grid-cols-6 gap-1 mt-1">
+          {PALACE_DIMS.map(name => {
+            const locked = !hasFeature(plan, 'analysis.full13');
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={() => handlePalaceDim(name)}
+                disabled={loading}
+                title={locked ? '专业版开放十三宫全维分析' : `分析${name}宫`}
+                className={`py-1.5 text-[10px] font-medium rounded-lg transition-all duration-150 disabled:opacity-40${locked ? ' zw-dim-locked' : ''}`}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--t-border)',
+                  color: 'var(--t-faint)',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3,
+                }}
+              >
+                {name}
+                {locked && <LockIcon size={8} />}
               </button>
             );
           })}
@@ -944,7 +1015,16 @@ ${palaceName}的三方四正为：${palaceName}（本宫）、${siHuaSanFang}。
 
       {/* ── 追问输入栏：显眼标题 + 快捷问题 + iOS 信息输入框 ── */}
       <div className="ios-compose">
-        {quota && (
+        {plan === 'pro' && (
+          <div className={`ios-quota-wrap${proLeft <= 0 ? ' ios-quota-wrap-low' : ''}`}>
+            <div className={`ios-quota${proLeft <= 0 ? ' ios-quota-low' : ''}`}>
+              专业版本周剩 {proLeft} / {PRO_WEEKLY_QUOTA} 次
+              <span className="ios-quota-sep">·</span>
+              <a href="/pro" style={{ color: 'inherit', textDecoration: 'underline' }}>管理</a>
+            </div>
+          </div>
+        )}
+        {plan !== 'pro' && quota && (
           <div className={`ios-quota-wrap${quota.freeLeft <= 0 && quota.credits <= 0 ? ' ios-quota-wrap-low' : ''}`}>
             <div className={`ios-quota${quota.freeLeft <= 0 && quota.credits <= 0 ? ' ios-quota-low' : ''}`}>
               {quota.freeLeft > 0 ? `免费剩 ${quota.freeLeft} 次` : '免费次数已用完'}

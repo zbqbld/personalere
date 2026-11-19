@@ -51,6 +51,17 @@ export async function billingGate(req: Request, token: string | undefined | null
   const config = billingConfig();
   if (!config.enabled) return { pass: true };
 
+  // 专业版模拟放行：前端本地模拟开通后会带 x-ziwei-plan: pro。
+  // 安全边界说明：本地模拟阶段无法在服务端验证等级归属，因此该头可被伪造；
+  // 接真实支付时必须改为服务端签发的等级令牌，不能用请求头自证。
+  // 设 MEMBERSHIP_SIMULATE=false 可关闭这条放行通道。
+  if (
+    req.headers.get('x-ziwei-plan') === 'pro' &&
+    process.env.MEMBERSHIP_SIMULATE !== 'false'
+  ) {
+    return { pass: true };
+  }
+
   try {
     await initAccountBackend();
     const db = getCloudflareDB() as D1Like | null;

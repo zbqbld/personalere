@@ -12,6 +12,8 @@ interface ShierShenDisplay {
 
 interface PalaceCellProps {
   palace: Palace;
+  /** 当前时间维度（小限/流月/流日/流时）落在此宫的标记文本，无则不显示 */
+  timeMark?: string;
   shierShen?: ShierShenDisplay;
   onClick?: () => void;
   onStarClick?: (star: Star) => void;
@@ -62,7 +64,7 @@ const SiHuaBadge = ({
 
 export default function PalaceCell({
   palace, onClick, onStarClick, isSelected, isSanFang, delay = 0,
-  overlayStarSiHua, overlayLabel, onSiHuaClick, shierShen,
+  overlayStarSiHua, overlayLabel, onSiHuaClick, shierShen, timeMark,
 }: PalaceCellProps) {
   const { branch, stem, name, stars, daXianAge, isCurrentDaXian, isMingGong, isShenGong } = palace;
   const ganzhi = `${STEMS[stem]}${BRANCHES[branch]}`;
@@ -112,6 +114,16 @@ export default function PalaceCell({
           style={!isCurrentDaXian ? { color: 'var(--t-faint)', opacity: 0.75 } : undefined}
         >
           {daXianAge[0]}–{daXianAge[1]}
+        </div>
+      )}
+
+      {/* 时间维度标记（小限 / 流月 / 流日 / 流时落宫） */}
+      {timeMark && (
+        <div className="absolute top-1 left-1 text-[8px] font-semibold px-1.5 py-px rounded-full"
+          style={{ background: 'rgba(37,99,235,0.12)', color: '#2563eb', border: '1px solid rgba(37,99,235,0.3)' }}
+          data-time-mark={timeMark}
+        >
+          {timeMark}
         </div>
       )}
 

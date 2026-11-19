@@ -19,6 +19,8 @@ import {
 } from '@/lib/ziwei/memory';
 import { saveUserProfiles } from '@/lib/ziwei/user-profiles';
 import AccountPanel from '@/components/AccountPanel';
+import { useMembership, UpgradeDialog } from '@/components/ProGate';
+import type { FeatureKey } from '@/lib/membership/plan';
 import { applyAccountScope, clearAccountProfiles, loadAccount, saveAccountProfiles } from '@/lib/account/client';
 import { ACCOUNT_ENABLED } from '@/lib/account/feature';
 import type { ZiweiChart, Palace, BirthInfo } from '@/lib/ziwei/types';
@@ -53,6 +55,10 @@ export default function ChartPage() {
   const [autoRestored, setAutoRestored] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [toast, setToast] = useState('');
+  /** 会员等级：控制流月/流日/流时与十三宫分析 */
+  const { plan } = useMembership();
+  /** 当前触发升级说明的功能点；null 表示弹窗关闭 */
+  const [gateFeature, setGateFeature] = useState<FeatureKey | null>(null);
   /** 左右分栏比例：左栏宽度百分比，可拖动分隔线调整（30–70） */
   const [leftPct, setLeftPct] = useState(46);
   const workspaceRef = useRef<HTMLDivElement | null>(null);
@@ -308,6 +314,9 @@ export default function ChartPage() {
 
           <div className="zw-top-actions">
             <Link href="/workbench" className="zw-wb-link">工作台</Link>
+            <Link href="/pro" className={`zw-wb-link${plan === 'pro' ? ' is-pro' : ''}`}>
+              {plan === 'pro' ? '专业版' : '升级专业版'}
+            </Link>
             {authState !== 'out' && (
               <span className={`zw-pill${memory ? '' : ' zw-pill-off'}`}>
                 {memory ? '已记住' : '未保存'}
@@ -427,7 +436,12 @@ export default function ChartPage() {
           >
             {/* 左栏：命盘图表，宽度受分隔线控制 */}
             <div className="zw-scroll zw-pane-left">
-              <ChartBoard chart={chart} onPalaceSelect={setSelectedPalace} />
+              <ChartBoard
+                chart={chart}
+                plan={plan}
+                onLocked={setGateFeature}
+                onPalaceSelect={setSelectedPalace}
+              />
             </div>
 
             {/* 可拖动分隔线：仅调整两栏宽度，不改任何业务数据 */}
@@ -453,9 +467,17 @@ export default function ChartPage() {
                 chart={chart}
                 selectedPalace={selectedPalace}
                 chatResetSignal={chatResetSignal}
+                plan={plan}
+                onLocked={setGateFeature}
               />
             </div>
           </div>
+
+          <UpgradeDialog
+            open={gateFeature !== null}
+            feature={gateFeature}
+            onClose={() => setGateFeature(null)}
+          />
         </>
       ) : (
         <>
